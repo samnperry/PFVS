@@ -86,12 +86,12 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
                 # version check: github repository
                 "type": "github_release",
-                "user": "Team-25009",
+                "user": "samnperry",
                 "repo": "PFVS",
                 "current": self._plugin_version,
 
                 # update method: pip
-                "pip": "https://github.com/Team-25009/PFVS/archive/{target_version}.zip",
+                "pip": "https://github.com/samnperry/PFVS/archive/{target_version}.zip",
             }
         }
 

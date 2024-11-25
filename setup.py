@@ -27,7 +27,7 @@ plugin_author = "Team 25009"
 plugin_author_email = "samnperry@arizona.edu"
 
 # The plugin's homepage URL. Can be overwritten within OctoPrint's internal data via __plugin_url__ in the plugin module
-plugin_url = "https://github.com/Team-25009/PFVS"
+plugin_url = "https://github.com/samnperry/PFVS"
 
 # The plugin's license. Can be overwritten within OctoPrint's internal data via __plugin_license__ in the plugin module
 plugin_license = "AGPLv3"
