@@ -3,7 +3,8 @@ from __future__ import absolute_import
 
 import octoprint.plugin
 from octoprint.events import Events
-import time
+import serial
+import threading
 
 class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     octoprint.plugin.AssetPlugin,
@@ -16,6 +17,47 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         super().__init__()
         self.is_filament_loading = False
         self.is_filament_unloading = False
+        self.arduino_serial = None
+        self.serial_thread = None
+        self.running = False
+
+    ##~~ Serial Communication
+
+    def start_serial_communication(self):
+        try:
+            self.arduino_serial = serial.Serial("/dev/ttyUSB0", 9600, timeout=1)  # Adjust the port as needed
+            self.running = True
+            self.serial_thread = threading.Thread(target=self.read_from_arduino)
+            self.serial_thread.start()
+            self._logger.info("Arduino serial communication started.")
+        except Exception as e:
+            self._logger.error(f"Failed to start serial communication: {e}")
+
+    def read_from_arduino(self):
+        while self.running:
+            try:
+                if self.arduino_serial.in_waiting > 0:
+                    gcode = self.arduino_serial.readline().decode("utf-8").strip()
+                    self._logger.info(f"Received G-code from Arduino: {gcode}")
+                    self._printer.commands([gcode])  # Send G-code to the printer
+            except Exception as e:
+                self._logger.error(f"Error reading from Arduino: {e}")
+
+    def stop_serial_communication(self):
+        self.running = False
+        if self.serial_thread:
+            self.serial_thread.join()
+        if self.arduino_serial:
+            self.arduino_serial.close()
+        self._logger.info("Arduino serial communication stopped.")
+
+    ##~~ Lifecycle Hooks
+
+    def on_after_startup(self):
+        self.start_serial_communication()
+
+    def on_shutdown(self):
+        self.stop_serial_communication()
 
     ##~~ SettingsPlugin mixin
 
@@ -54,8 +96,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     ##~~ G-code received hook
 
-        ##~~ G-code received hook
-
     def process_gcode(self, comm, line, *args, **kwargs):
         # Check if the line contains filament loading/unloading commands
         if "M701" in line:
@@ -74,7 +114,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_unloading = False
 
         return line
-
 
     ##~~ Softwareupdate hook
 
