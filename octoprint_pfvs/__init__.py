@@ -1,17 +1,14 @@
-# coding=utf-8
 from __future__ import absolute_import
-
 import octoprint.plugin
 from octoprint.events import Events
 import serial
 import threading
 
 class PFVSPlugin(octoprint.plugin.SettingsPlugin,
-    octoprint.plugin.AssetPlugin,
-    octoprint.plugin.TemplatePlugin,
-    octoprint.plugin.EventHandlerPlugin,
-    octoprint.plugin.OctoPrintPlugin
-):
+                 octoprint.plugin.AssetPlugin,
+                 octoprint.plugin.TemplatePlugin,
+                 octoprint.plugin.EventHandlerPlugin,
+                 octoprint.plugin.OctoPrintPlugin):
 
     def __init__(self):
         super().__init__()
@@ -25,7 +22,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def start_serial_communication(self):
         try:
-            self.arduino_serial = serial.Serial("/dev/ttyUSB0", 9600, timeout=1)  # Adjust the port as needed
+            # Open serial port
+            self.arduino_serial = serial.Serial("/dev/ttyUSB0", 9600, timeout=1)  # Adjust port if needed
             self.running = True
             self.serial_thread = threading.Thread(target=self.read_from_arduino)
             self.serial_thread.start()
@@ -38,17 +36,18 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             try:
                 if self.arduino_serial.in_waiting > 0:
                     gcode = self.arduino_serial.readline().decode("utf-8").strip()
-                    self._logger.info(f"Received G-code from Arduino: {gcode}")
-                    self._printer.commands([gcode])  # Send G-code to the printer
+                    if gcode:  # Ensure valid G-code is received
+                        self._logger.info(f"Received G-code from Arduino: {gcode}")
+                        self._printer.commands([gcode])  # Send G-code to the printer
             except Exception as e:
                 self._logger.error(f"Error reading from Arduino: {e}")
 
     def stop_serial_communication(self):
         self.running = False
         if self.serial_thread:
-            self.serial_thread.join()
+            self.serial_thread.join()  # Wait for thread to finish
         if self.arduino_serial:
-            self.arduino_serial.close()
+            self.arduino_serial.close()  # Close serial connection
         self._logger.info("Arduino serial communication stopped.")
 
     ##~~ Lifecycle Hooks
@@ -63,14 +62,12 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def get_settings_defaults(self):
         return {
-            # put your plugin's default settings here
+            # Add plugin default settings if needed
         }
 
     ##~~ AssetPlugin mixin
 
     def get_assets(self):
-        # Define your plugin's asset files to automatically include in the
-        # core UI here.
         return {
             "js": ["js/pfvs.js"],
             "css": ["css/pfvs.css"],
@@ -86,29 +83,22 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def on_event(self, event, payload):
         if event == Events.PRINT_STARTED:
-            # Pause the print
             self._printer.pause_print()
             self._logger.info("Print started - pausing for 30 seconds.")
-            
-            # Resume the print
             self._printer.resume_print()
             self._logger.info("Resuming print after 30 second pause.")
 
     ##~~ G-code received hook
 
     def process_gcode(self, comm, line, *args, **kwargs):
-        # Check if the line contains filament loading/unloading commands
-        if "M701" in line:
+        if "M701" in line:  # Filament loading command
             self.is_filament_loading = True
             self.is_filament_unloading = False
             self._logger.info("Filament is being loaded.")
-
-        elif "M702" in line:
+        elif "M702" in line:  # Filament unloading command
             self.is_filament_loading = False
             self.is_filament_unloading = True
             self._logger.info("Filament is being unloaded.")
-
-        # If neither, reset flags
         else:
             self.is_filament_loading = False
             self.is_filament_unloading = False
@@ -122,18 +112,13 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             "pfvs": {
                 "displayName": "PFVS Plugin",
                 "displayVersion": self._plugin_version,
-
-                # version check: github repository
                 "type": "github_release",
                 "user": "samnperry",
                 "repo": "PFVS",
                 "current": self._plugin_version,
-
-                # update method: pip
                 "pip": "https://github.com/samnperry/PFVS/archive/{target_version}.zip",
             }
         }
-
 
 __plugin_name__ = "PFVS Plugin"
 __plugin_pythoncompat__ = ">=3,<4"  # Only Python 3
