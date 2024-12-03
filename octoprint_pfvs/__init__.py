@@ -18,6 +18,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.arduino_serial = None
         self.serial_thread = None
         self.running = False
+        self.print_paused = False
         
         ##~~ Lifecycle Hooks
 
@@ -89,17 +90,25 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def on_event(self, event, payload):
         self._logger.info(f"Event received: {event}")
-        if event == Events.PRINT_STARTED:
-            self._printer.pause_print()
-            self._logger.info("Print started - pausing for 30 seconds.")
+        if event == "PrinterStateChanged":
+            new_state = payload.get("state_id")
+            self._logger.info(f"New printer state: {new_state}")
+            
+            if new_state == "PRINTING" and not self.print_paused:
+                    self._logger.info("Detected state transition to PRINTING. Print is starting!")
+                    self.print_paused = True
+                    self._printer.pause_print()
+                    self._logger.info("Print started - pausing for 30 seconds.")
 
-            # Start a thread
-            threading.Thread(target=self.delayed_resume_print, daemon=True).start()
+                    # Start a thread
+                    threading.Thread(target=self.delayed_resume_print, daemon=True).start()
 
     def delayed_resume_print(self):
         time.sleep(30)
         self._printer.resume_print()
+        self.print_paused = False  # Reset flag
         self._logger.info("Resuming print after 30-second pause.")
+
 
     ##~~ G-code received hook
 
