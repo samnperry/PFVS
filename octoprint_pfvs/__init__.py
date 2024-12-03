@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import time
 import octoprint.plugin
 from octoprint.events import Events
 import serial
@@ -17,46 +18,47 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.arduino_serial = None
         self.serial_thread = None
         self.running = False
+        self._logger.info("PFVS Plugin initialized.")
 
     ##~~ Serial Communication
 
-    def start_serial_communication(self):
-        try:
-            # Open serial port
-            self.arduino_serial = serial.Serial("/dev/ttyUSB0", 9600, timeout=1)  # Adjust port if needed
-            self.running = True
-            self.serial_thread = threading.Thread(target=self.read_from_arduino)
-            self.serial_thread.start()
-            self._logger.info("Arduino serial communication started.")
-        except Exception as e:
-            self._logger.error(f"Failed to start serial communication: {e}")
+    # def start_serial_communication(self):
+    #     try:
+    #         # Open serial port
+    #         self.arduino_serial = serial.Serial("/dev/ttyUSB0", 9600, timeout=1)  # Adjust port if needed
+    #         self.running = True
+    #         self.serial_thread = threading.Thread(target=self.read_from_arduino)
+    #         self.serial_thread.start()
+    #         self._logger.info("Arduino serial communication started.")
+    #     except Exception as e:
+    #         self._logger.error(f"Failed to start serial communication: {e}")
 
-    def read_from_arduino(self):
-        while self.running:
-            try:
-                if self.arduino_serial.in_waiting > 0:
-                    gcode = self.arduino_serial.readline().decode("utf-8").strip()
-                    if gcode:  # Ensure valid G-code is received
-                        self._logger.info(f"Received G-code from Arduino: {gcode}")
-                        self._printer.commands([gcode])  # Send G-code to the printer
-            except Exception as e:
-                self._logger.error(f"Error reading from Arduino: {e}")
+    # def read_from_arduino(self):
+    #     while self.running:
+    #         try:
+    #             if self.arduino_serial.in_waiting > 0:
+    #                 gcode = self.arduino_serial.readline().decode("utf-8").strip()
+    #                 if gcode:  # Ensure valid G-code is received
+    #                     self._logger.info(f"Received G-code from Arduino: {gcode}")
+    #                     self._printer.commands([gcode])  # Send G-code to the printer
+    #         except Exception as e:
+    #             self._logger.error(f"Error reading from Arduino: {e}")
 
-    def stop_serial_communication(self):
-        self.running = False
-        if self.serial_thread:
-            self.serial_thread.join()  # Wait for thread to finish
-        if self.arduino_serial:
-            self.arduino_serial.close()  # Close serial connection
-        self._logger.info("Arduino serial communication stopped.")
+    # def stop_serial_communication(self):
+    #     self.running = False
+    #     if self.serial_thread:
+    #         self.serial_thread.join()  # Wait for thread to finish
+    #     if self.arduino_serial:
+    #         self.arduino_serial.close()  # Close serial connection
+    #     self._logger.info("Arduino serial communication stopped.")
 
     ##~~ Lifecycle Hooks
 
-    def on_after_startup(self):
-        self.start_serial_communication()
+    # def on_after_startup(self):
+    #     self.start_serial_communication()
 
-    def on_shutdown(self):
-        self.stop_serial_communication()
+    # def on_shutdown(self):
+    #     self.stop_serial_communication()
 
     ##~~ SettingsPlugin mixin
 
@@ -82,11 +84,18 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ Event Handler Plugin
 
     def on_event(self, event, payload):
+        self._logger.info(f"Event received: {event}")
         if event == Events.PRINT_STARTED:
             self._printer.pause_print()
             self._logger.info("Print started - pausing for 30 seconds.")
-            self._printer.resume_print()
-            self._logger.info("Resuming print after 30 second pause.")
+
+            # Start a thread
+            threading.Thread(target=self.delayed_resume_print, daemon=True).start()
+
+    def delayed_resume_print(self):
+        time.sleep(30)
+        self._printer.resume_print()
+        self._logger.info("Resuming print after 30-second pause.")
 
     ##~~ G-code received hook
 
@@ -105,7 +114,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
         return line
 
-    ##~~ Softwareupdate hook
+    ##~~ Software update hook
 
     def get_update_information(self):
         return {
