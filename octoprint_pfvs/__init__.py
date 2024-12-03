@@ -18,6 +18,10 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.arduino_serial = None
         self.serial_thread = None
         self.running = False
+        
+        ##~~ Lifecycle Hooks
+
+    def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
 
     ##~~ Serial Communication
