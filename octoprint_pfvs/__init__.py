@@ -13,6 +13,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                  octoprint.plugin.AssetPlugin,
                  octoprint.plugin.TemplatePlugin,
                  octoprint.plugin.EventHandlerPlugin,
+                 octoprint.plugin.BlueprintPlugin,
                  octoprint.plugin.OctoPrintPlugin):
 
     def __init__(self):
