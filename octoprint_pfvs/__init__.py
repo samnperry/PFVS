@@ -58,9 +58,13 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     def get_template_configs(self):
         return [
             {
-                "type": "tab",  # This makes it appear as a new tab in OctoPrint
+                "type": "tab", 
                 "name": "PFVS",
                 "template": "pfvs.jinja2",
+            },
+            {
+            "type": "generic",
+            "template": None,  # Prevents loading anywhere else
             }
         ]
 
