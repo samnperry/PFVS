@@ -7,7 +7,7 @@ import re
 import sys
 import os
 from flask import jsonify
-from . import spectrometer as spect
+from octoprint_pfvs import spectrometer as spect
 
 class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                  octoprint.plugin.AssetPlugin,
