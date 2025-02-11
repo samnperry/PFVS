@@ -1,0 +1,14 @@
+<div id="pfvs_plugin">
+    <h2>Plastic Filament Verification System</h2>
+    <button class="pfvs-btn pfvs-start" data-bind="click: startSpectrometer, disable: isSpectrometerRunning">
+        Start Spectrometer
+    </button>
+    <button class="pfvs-btn pfvs-stop" data-bind="click: stopSpectrometer, enable: isSpectrometerRunning">
+        Stop Spectrometer
+    </button>
+
+    <h3>Spectrometer Data</h3>
+    <div id="spectrometer_data" data-bind="foreach: spectrometerData">
+        <div data-bind="text: $data"></div>
+    </div>
+</div>

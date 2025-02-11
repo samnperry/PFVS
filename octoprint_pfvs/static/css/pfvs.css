@@ -1,1 +1,44 @@
 /* TODO: Have your plugin's CSS files generated to here. */
+#pfvs_plugin {
+    padding: 15px;
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+    border-radius: 5px;
+    text-align: center;
+}
+
+#pfvs_plugin h2 {
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.pfvs-btn {
+    padding: 8px 15px;
+    margin: 5px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.pfvs-start {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.pfvs-stop {
+    background-color: #f44336;
+    color: white;
+}
+
+#spectrometer_data {
+    margin-top: 15px;
+    font-size: 14px;
+    background: #fff;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+

@@ -2,8 +2,12 @@ from __future__ import absolute_import
 import time
 import octoprint.plugin
 from octoprint.events import Events
-import serial
 import threading
+import re
+import sys
+import os
+from flask import jsonify
+from . import spectrometer as spect
 
 class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                  octoprint.plugin.AssetPlugin,
@@ -19,58 +23,21 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.serial_thread = None
         self.running = False
         self.print_paused = False
-        
-        ##~~ Lifecycle Hooks
+        self.spectrometer_thread = None
+        self.spectrometer_running = False  # Flag to control the spectrometer thread
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
-
-    ##~~ Serial Communication
-
-    # def start_serial_communication(self):
-    #     try:
-    #         # Open serial port
-    #         self.arduino_serial = serial.Serial("/dev/ttyUSB0", 9600, timeout=1)  # Adjust port if needed
-    #         self.running = True
-    #         self.serial_thread = threading.Thread(target=self.read_from_arduino)
-    #         self.serial_thread.start()
-    #         self._logger.info("Arduino serial communication started.")
-    #     except Exception as e:
-    #         self._logger.error(f"Failed to start serial communication: {e}")
-
-    # def read_from_arduino(self):
-    #     while self.running:
-    #         try:
-    #             if self.arduino_serial.in_waiting > 0:
-    #                 gcode = self.arduino_serial.readline().decode("utf-8").strip()
-    #                 if gcode:  # Ensure valid G-code is received
-    #                     self._logger.info(f"Received G-code from Arduino: {gcode}")
-    #                     self._printer.commands([gcode])  # Send G-code to the printer
-    #         except Exception as e:
-    #             self._logger.error(f"Error reading from Arduino: {e}")
-
-    # def stop_serial_communication(self):
-    #     self.running = False
-    #     if self.serial_thread:
-    #         self.serial_thread.join()  # Wait for thread to finish
-    #     if self.arduino_serial:
-    #         self.arduino_serial.close()  # Close serial connection
-    #     self._logger.info("Arduino serial communication stopped.")
-
-    ##~~ Lifecycle Hooks
-
-    # def on_after_startup(self):
-    #     self.start_serial_communication()
-
-    # def on_shutdown(self):
-    #     self.stop_serial_communication()
+        try:
+            spect.init()
+            self._logger.info("Spectrometer initialized successfully.")
+        except Exception as e:
+            self._logger.error(f"Failed to initialize spectrometer: {e}")
 
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
-        return {
-            # Add plugin default settings if needed
-        }
+        return {}
 
     ##~~ AssetPlugin mixin
 
@@ -85,6 +52,16 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def get_template_vars(self):
         return {"plugin_version": self._plugin_version}
+    
+    ##~~ Template Plugin Mixin
+    def get_template_configs(self):
+        return [
+            {
+                "type": "tab",  # This makes it appear as a new tab in OctoPrint
+                "name": "PFVS",
+                "template": "pfvs.jinja2",
+            }
+        ]
 
     ##~~ Event Handler Plugin
 
@@ -95,37 +72,76 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self._logger.info(f"New printer state: {new_state}")
             
             if new_state == "PRINTING" and not self.print_paused:
-                    self._logger.info("Detected state transition to PRINTING. Print is starting!")
-                    self.print_paused = True
-                    self._printer.pause_print()
-                    self._logger.info("Print started - pausing for 30 seconds.")
-
-                    # Start a thread
-                    threading.Thread(target=self.delayed_resume_print, daemon=True).start()
+                self._logger.info("Detected state transition to PRINTING. Print is starting!")
+                self.print_paused = True
+                self._printer.pause_print()
+                self._logger.info("Print started - pausing for 30 seconds.")
+                threading.Thread(target=self.delayed_resume_print, daemon=True).start()
 
     def delayed_resume_print(self):
         time.sleep(30)
         self._printer.resume_print()
-        self.print_paused = False  # Reset flag
+        self.print_paused = False  
         self._logger.info("Resuming print after 30-second pause.")
-
 
     ##~~ G-code received hook
 
     def process_gcode(self, comm, line, *args, **kwargs):
-        if "M701" in line:  # Filament loading command
+        if "M701" in line:  
             self.is_filament_loading = True
             self.is_filament_unloading = False
             self._logger.info("Filament is being loaded.")
-        elif "M702" in line:  # Filament unloading command
+        elif "M702" in line:  
             self.is_filament_loading = False
             self.is_filament_unloading = True
             self._logger.info("Filament is being unloaded.")
         else:
             self.is_filament_loading = False
             self.is_filament_unloading = False
-
+            
+        match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)    
+        if match:
+            current_temp = float(match.group(1))  
+            target_temp = float(match.group(2))  
+    
+            if current_temp >= 0.95 * target_temp:
+                self._printer.pause_print()
+                self._logger.info(f"Print started - pausing for 30 seconds as temperature is {current_temp}/{target_temp} (>= 95%).")
+                threading.Thread(target=self.delayed_resume_print, daemon=True).start()
+            
         return line
+
+    ##~~ Spectrometer Handling
+
+    def start_spectrometer(self):
+        """Starts a separate thread for reading spectrometer data."""
+        if self.spectrometer_running:
+            self._logger.info("Spectrometer is already running.")
+            return
+        
+        self.spectrometer_running = True
+        self.spectrometer_thread = threading.Thread(target=self.read_spectrometer_data, daemon=True)
+        self.spectrometer_thread.start()
+        self._logger.info("Spectrometer data collection started.")
+
+    def stop_spectrometer(self):
+        """Stops the spectrometer thread."""
+        self.spectrometer_running = False
+        self._logger.info("Stopping spectrometer data collection.")
+
+    def read_spectrometer_data(self):
+        """Reads data from the spectrometer and sends it to the web interface."""
+        try:
+            spect.setGain(3)  
+            while self.spectrometer_running:
+                CALvalues = spect.readCAL()
+
+                # Send data to web UI
+                self._plugin_manager.send_plugin_message(self._identifier, {"spectrometer_data": CALvalues})
+                
+                time.sleep(1)  # Adjust sampling rate
+        except Exception as e:
+            self._logger.error(f"Error reading spectrometer data: {e}")
 
     ##~~ Software update hook
 
@@ -142,8 +158,22 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             }
         }
 
+    ##~~ API for UI to Start/Stop Spectrometer
+
+    @octoprint.plugin.BlueprintPlugin.route("/start_spectrometer", methods=["POST"])
+    def api_start_spectrometer(self):
+        """API endpoint to start spectrometer via UI."""
+        self.start_spectrometer()
+        return jsonify(status="Spectrometer started")
+
+    @octoprint.plugin.BlueprintPlugin.route("/stop_spectrometer", methods=["POST"])
+    def api_stop_spectrometer(self):
+        """API endpoint to stop spectrometer via UI."""
+        self.stop_spectrometer()
+        return jsonify(status="Spectrometer stopped")
+
 __plugin_name__ = "PFVS Plugin"
-__plugin_pythoncompat__ = ">=3,<4"  # Only Python 3
+__plugin_pythoncompat__ = ">=3,<4"
 
 def __plugin_load__():
     global __plugin_implementation__
