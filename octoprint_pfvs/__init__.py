@@ -6,6 +6,7 @@ import threading
 import re
 import sys
 import os
+import math
 from flask import jsonify
 from octoprint_pfvs import spectrometer as spect
 
@@ -92,6 +93,9 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ G-code received hook
 
     def process_gcode(self, comm, line, *args, **kwargs):
+        """ Processes received G-code and handles temperature adjustments """
+        
+        # Detect filament loading/unloading commands
         if "M701" in line:  
             self.is_filament_loading = True
             self.is_filament_unloading = False
@@ -104,14 +108,31 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_loading = False
             self.is_filament_unloading = False
             
+        # Extract temperatures from the G-code line
         match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)    
         if match:
             current_temp = float(match.group(1))  
-            target_temp = float(match.group(2))  
-    
+            target_temp = float(match.group(2))
+            filament_test_load = 220.0  # The correct test temperature
+
+            # Check if we are close to the target temperature
             if current_temp >= 0.95 * target_temp:
+                
+                # If target temperature is incorrect, adjust it first
+                if not math.isclose(target_temp, filament_test_load, rel_tol=1e-2):  
+                    self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament_test_load}°C.")
+
+                    # Set hotend temperature and wait for stabilization
+                    self._printer.commands([f"M104 S{filament_test_load}", f"M109 S{filament_test_load}"])
+                    
+                    # Ensure the new temperature is reached before pausing
+                    self._logger.info(f"Waiting for temperature stabilization at {filament_test_load}°C before pausing...")
+                
+                # Now pause the print
                 self._printer.pause_print()
-                self._logger.info(f"Print started - pausing for 30 seconds as temperature is {current_temp}/{target_temp} (>= 95%).")
+                self._logger.info(f"Print paused - current temperature: {current_temp}°C, target: {target_temp}°C.")
+
+                # Start a separate thread to resume after 30 seconds
                 threading.Thread(target=self.delayed_resume_print, daemon=True).start()
             
         return line
