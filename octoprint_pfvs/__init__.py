@@ -73,16 +73,14 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def on_event(self, event, payload):
         self._logger.info(f"Event received: {event}")
+        
         if event == "PrinterStateChanged":
             new_state = payload.get("state_id")
             self._logger.info(f"New printer state: {new_state}")
-            
-            if new_state == "PRINTING" and not self.print_paused:
-                self._logger.info("Detected state transition to PRINTING. Print is starting!")
-                self.print_paused = True
-                self._printer.pause_print()
-                self._logger.info("Print started - pausing for 30 seconds.")
-                threading.Thread(target=self.delayed_resume_print, daemon=True).start()
+
+            if new_state == "PRINTING":
+                self._logger.info("Print has officially started.")
+                self.print_started = True  # Set flag when print starts
 
     def delayed_resume_print(self):
         time.sleep(30)
@@ -116,8 +114,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             filament_test_load = 220.0  # The correct test temperature
 
             # Check if we are close to the target temperature
-            if current_temp >= 0.95 * target_temp:
-                
+            if self.print_started and current_temp >= 0.95 * target_temp:
                 # If target temperature is incorrect, adjust it first
                 if not math.isclose(target_temp, filament_test_load, rel_tol=1e-2):  
                     self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament_test_load}°C.")
