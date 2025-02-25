@@ -10,7 +10,7 @@ import math
 from flask import jsonify
 import RPi.GPIO as GPIO
 from octoprint_pfvs import spectrometer as spect
-from octoprint_pfvs.filament_gcodes import FILAMENTS, generate_gcode  # Updated to use the new FILAMENTS dict
+from octoprint_pfvs.filament_gcodes import FILAMENTS  # Updated to use the new FILAMENTS dict
 from predict_material import predict_material
 
 class PFVSPlugin(octoprint.plugin.SettingsPlugin,
