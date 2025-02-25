@@ -1,26 +1,26 @@
 from collections import namedtuple
+from typing import Dict, List
 
-def generate_gcode(settings):
-    return [
-        "M104 S{}".format(settings['print_temp']),
-        "M140 S{}".format(settings['bed_temp']),
-    ]
+class Filament:
+    """Class to define filament properties."""
+    def __init__(self, name: str, print_temp: int, bed_temp: int):
+        self.name = name
+        self.print_temp = print_temp
+        self.bed_temp = bed_temp
 
-# Define the immutable scan object
-MaterialScan = namedtuple("MaterialScan", ["name", "wavelengths", "intensities", "settings"])
+    def generate_gcode(self) -> List[str]:
+        """Generate G-code for this filament."""
+        return [
+            f"M104 S{self.print_temp}",  # Set nozzle temperature
+            f"M140 S{self.bed_temp}",    # Set bed temperature
+        ]
 
-# Settings Arrays
-FILAMENT_SETTINGS = {
-    "PLA": {
-        "print_temp": 210,
-        "bed_temp": 60,
-    },
-    "PETG": {
-        "print_temp": 240,
-        "bed_temp": 85,
-    },
-    "ASA": {
-        "print_temp": 260,
-        "bed_temp": 100,
-    },
+# Define available filament types
+FILAMENTS: Dict[str, Filament] = {
+    "PLA": Filament("PLA", 210, 60),
+    "PETG": Filament("PETG", 240, 85),
+    "ASA": Filament("ASA", 260, 100),
 }
+
+# Immutable MaterialScan Object
+MaterialScan = namedtuple("MaterialScan", ["name", "wavelengths", "intensities", "settings"])

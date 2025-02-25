@@ -10,7 +10,7 @@ import math
 from flask import jsonify
 import RPi.GPIO as GPIO
 from octoprint_pfvs import spectrometer as spect
-from octoprint_pfvs.filament_gcodes import FILAMENT_SETTINGS, generate_gcode
+from octoprint_pfvs.filament_gcodes import FILAMENTS, generate_gcode  # Updated to use the new FILAMENTS dict
 from predict_material import predict_material
 
 class PFVSPlugin(octoprint.plugin.SettingsPlugin,
@@ -78,7 +78,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self._logger.info(f"Sending G-code commands: {gcode_commands}")
         self._printer.commands(gcode_commands)
 
-
     ##~~ Event Handler Plugin
 
     def on_event(self, event, payload):
@@ -117,15 +116,15 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 self._logger.info(f"Predicted filament type: {predicted_material}")
 
                 # Check if the filament type is in the settings
-                if predicted_material in FILAMENT_SETTINGS:
-                    correct_settings = FILAMENT_SETTINGS[predicted_material]
+                if predicted_material in FILAMENTS:
+                    filament = FILAMENTS[predicted_material]
                     current_temp = self._printer.get_current_temperatures()["tool0"]["actual"]
 
-                    self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {correct_settings['print_temp']}°C")
+                    self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {filament.print_temp}°C")
 
-                    if not math.isclose(current_temp, correct_settings["print_temp"], rel_tol=0.05):
+                    if not math.isclose(current_temp, filament.print_temp, rel_tol=0.05):
                         self._logger.info("Temperature mismatch detected. Sending new G-code settings...")
-                        gcode_commands = generate_gcode(predicted_material)
+                        gcode_commands = filament.generate_gcode()
                         self._printer.commands(gcode_commands)
                         self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                 else:
@@ -151,14 +150,14 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             if self.print_started and current_temp >= 0.95 * target_temp:
                 predicted_material = predict_material(spect_data, 'R')
                 # If target temperature is incorrect, adjust it first
-                if not math.isclose(target_temp, correct_settings["print_temp"], rel_tol=1e-2):  
-                    self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {correct_settings["print_temp"]}°C.")
-                    if predicted_material in FILAMENT_SETTINGS:
-                        correct_settings = FILAMENT_SETTINGS[predicted_material]
+                if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
+                    self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
+                    if predicted_material in FILAMENTS:
+                        filament = FILAMENTS[predicted_material]
 
-                        self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {correct_settings['print_temp']}°C")
+                        self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {filament.print_temp}°C")
                         self._logger.info("Temperature mismatch detected. Sending new G-code settings...")
-                        gcode_commands = generate_gcode(predicted_material)
+                        gcode_commands = filament.generate_gcode()
                         self._printer.commands(gcode_commands)
                         self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                     else:
