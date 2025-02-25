@@ -8,7 +8,10 @@ import sys
 import os
 import math
 from flask import jsonify
+import RPi.GPIO as GPIO
 from octoprint_pfvs import spectrometer as spect
+from octoprint_pfvs.filament_gcodes import FILAMENT_SETTINGS, generate_gcode
+from predict_material import predict_material
 
 class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                  octoprint.plugin.AssetPlugin,
@@ -21,16 +24,16 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         super().__init__()
         self.is_filament_loading = False
         self.is_filament_unloading = False
-        self.arduino_serial = None
-        self.serial_thread = None
-        self.running = False
         self.print_paused = False
         self.spectrometer_thread = None
-        self.spectrometer_running = False  # Flag to control the spectrometer thread
+        self.spectrometer_running = False 
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
         try:
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BOARD)
+            GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
             spect.init()
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
@@ -65,9 +68,16 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             },
             {
             "type": "generic",
-            "template": None,  # Prevents loading anywhere else
+            "template": None,
             }
         ]
+        
+    def send_gcode_to_printer(self, settings):
+        """Generates G-code based on settings and sends it to the printer."""
+        gcode_commands = generate_gcode(settings)
+        self._logger.info(f"Sending G-code commands: {gcode_commands}")
+        self._printer.commands(gcode_commands)
+
 
     ##~~ Event Handler Plugin
 
@@ -91,50 +101,78 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ G-code received hook
 
     def process_gcode(self, comm, line, *args, **kwargs):
-        """ Processes received G-code and handles temperature adjustments """
-        
-        # Detect filament loading/unloading commands
-        if "M701" in line:  
+        """ Processes received G-code and handles filament verification & temperature adjustments """
+
+        if "M701" in line:  # Filament load command detected
             self.is_filament_loading = True
             self.is_filament_unloading = False
             self._logger.info("Filament is being loaded.")
-        elif "M702" in line:  
+
+            if self.is_filament_detected():  # Check if filament is present
+                self._logger.info("Filament detected. Running spectrometer scan...")
+                spect.setGain(3)
+                spect_data = spect.readCAL()
+                predicted_material = predict_material(spect_data, 'R')
+
+                self._logger.info(f"Predicted filament type: {predicted_material}")
+
+                # Check if the filament type is in the settings
+                if predicted_material in FILAMENT_SETTINGS:
+                    correct_settings = FILAMENT_SETTINGS[predicted_material]
+                    current_temp = self._printer.get_current_temperatures()["tool0"]["actual"]
+
+                    self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {correct_settings['print_temp']}°C")
+
+                    if not math.isclose(current_temp, correct_settings["print_temp"], rel_tol=0.05):
+                        self._logger.info("Temperature mismatch detected. Sending new G-code settings...")
+                        gcode_commands = generate_gcode(predicted_material)
+                        self._printer.commands(gcode_commands)
+                        self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
+                else:
+                    self._logger.warning(f"Unknown filament type: {predicted_material}. No preset settings found.")
+
+        elif "M702" in line:  # Filament unload command detected
             self.is_filament_loading = False
             self.is_filament_unloading = True
             self._logger.info("Filament is being unloaded.")
+
         else:
             self.is_filament_loading = False
             self.is_filament_unloading = False
             
-        # Extract temperatures from the G-code line
         match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)    
-        if match:
+        if match and self.is_filament_detected():
             current_temp = float(match.group(1))  
             target_temp = float(match.group(2))
-            filament_test_load = 220.0  # The correct test temperature
+            spect.setGain(3)
+            spect_data = spect.readCAL()
 
             # Check if we are close to the target temperature
             if self.print_started and current_temp >= 0.95 * target_temp:
+                predicted_material = predict_material(spect_data, 'R')
                 # If target temperature is incorrect, adjust it first
-                if not math.isclose(target_temp, filament_test_load, rel_tol=1e-2):  
-                    self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament_test_load}°C.")
+                if not math.isclose(target_temp, correct_settings["print_temp"], rel_tol=1e-2):  
+                    self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {correct_settings["print_temp"]}°C.")
+                    if predicted_material in FILAMENT_SETTINGS:
+                        correct_settings = FILAMENT_SETTINGS[predicted_material]
 
-                    # Set hotend temperature and wait for stabilization
-                    self._printer.commands([f"M104 S{filament_test_load}", f"M109 S{filament_test_load}"])
-                    
-                    # Ensure the new temperature is reached before pausing
-                    self._logger.info(f"Waiting for temperature stabilization at {filament_test_load}°C before pausing...")
-                
-                # Now pause the print
-                self._printer.pause_print()
-                self._logger.info(f"Print paused - current temperature: {current_temp}°C, target: {target_temp}°C.")
+                        self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {correct_settings['print_temp']}°C")
+                        self._logger.info("Temperature mismatch detected. Sending new G-code settings...")
+                        gcode_commands = generate_gcode(predicted_material)
+                        self._printer.commands(gcode_commands)
+                        self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
+                    else:
+                        self._logger.warning(f"Unknown filament type: {predicted_material}. No preset settings found.")
 
                 # Start a separate thread to resume after 30 seconds
-                threading.Thread(target=self.delayed_resume_print, daemon=True).start()
-            
+                threading.Thread(target=self.delayed_resume_print, daemon=True).start()    
+
         return line
 
     ##~~ Spectrometer Handling
+    def is_filament_detected(self):
+        """Returns True if the IR sensor detects filament."""
+        return GPIO.input(11) == GPIO.HIGH
 
     def start_spectrometer(self):
         """Starts a separate thread for reading spectrometer data."""
@@ -142,6 +180,11 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self._logger.info("Spectrometer is already running.")
             return
         
+        if not self.is_filament_detected():
+            self._logger.warning("No filament detected. Spectrometer will not start.")
+            return
+        
+        # Add if statement to see if there is filament detected first before running a scan
         self.spectrometer_running = True
         self.spectrometer_thread = threading.Thread(target=self.read_spectrometer_data, daemon=True)
         self.spectrometer_thread.start()
@@ -158,9 +201,13 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             spect.setGain(3)  
             while self.spectrometer_running:
                 CALvalues = spect.readCAL()
+                predicted_material = predict_material(CALvalues, 'R')
 
                 # Send data to web UI
-                self._plugin_manager.send_plugin_message(self._identifier, {"spectrometer_data": CALvalues})
+                self._plugin_manager.send_plugin_message(
+                    self._identifier, 
+                    {"spectrometer_data": CALvalues, "predicted_material": predicted_material}
+                )
                 
                 time.sleep(1)  # Adjust sampling rate
         except Exception as e:

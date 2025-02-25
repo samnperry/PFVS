@@ -1,6 +1,9 @@
 # Python 2.7 module for the SparkFun Triad Spectroscopy board
 # Feb 2019. Version 1
 
+# File so good they made a second one
+# Original by LiamsGitHub
+
 from smbus2 import SMBus											# Module for I2C
 import time
 
@@ -15,7 +18,7 @@ READ_REG =		0x02
 TX_VALID =		0x02
 RX_VALID =		0x01
 
-POLLING_DELAY = 0.05											# 50mS delay to prevent swamping the slave's I2C port
+POLLING_DELAY = 0.005											# 5mS delay to prevent swamping the slave's I2C port
 i2c = SMBus(1)													# Indicates /dev/i2c-1
 
 
@@ -38,7 +41,7 @@ def readReg(addr):
 		if ((status & TX_VALID) == 0):							# Wait for OK to transmit
 			break
 
-		time.sleep(POLLING_DELAY)								# Polling delay to avoid drowning Slave
+		#time.sleep(POLLING_DELAY)								# Polling delay to avoid drowning Slave
 
 	i2c.write_byte_data(I2C_ADDR, WRITE_REG, addr)				# send to Write register the Virtual Register address
 
@@ -47,7 +50,7 @@ def readReg(addr):
 
 		if ((status & RX_VALID) != 0):							# Wait for data to be present
 			break
-		time.sleep(0.05)										# Polling delay to avoid drowning Slave
+		#time.sleep(0.05)										# Polling delay to avoid drowning Slave
 
 	data = i2c.read_byte_data(I2C_ADDR,READ_REG)				# Finally pick up the data
 
@@ -66,7 +69,7 @@ def writeReg(addr,data):
 		if ((status & TX_VALID) == 0):							# Wait for OK to transmit
 			break
 
-		time.sleep(POLLING_DELAY)
+		#time.sleep(POLLING_DELAY)
 
 	i2c.write_byte_data(I2C_ADDR, WRITE_REG, addr | 0x80) 		# Send Virtual Register address to Write register 
 
@@ -76,7 +79,7 @@ def writeReg(addr,data):
 		if ((status & TX_VALID) == 0): 							# Ready for the write
 			break
 			
-		time.sleep(POLLING_DELAY)
+		#time.sleep(POLLING_DELAY)
 
 	i2c.write_byte_data(I2C_ADDR,WRITE_REG,data)				# Do the write
 	return
@@ -154,7 +157,7 @@ def reorderData(unsortedData):
 def init():
 
 	writeReg(0x04,1)
-	time.sleep(4)		# Experience was the on-board firmware needs a 2s delay after factory reset to get ready. If you poll it immediately you get [Errno 121] Remote I/O error
+	time.sleep(3)		# Experience was the on-board firmware needs a 2s delay after factory reset to get ready. If you poll it immediately you get [Errno 121] Remote I/O error
 
 	return
 
@@ -228,7 +231,8 @@ def shutterLED(device,state):
 
 	try:
 		mode = DEVSELbits[device]
-		print ("Mode = " + str(mode))
+		
+		print ("Debug: LEDMode = " + str(mode) + ", " + str(state))
 	except:
 		print ("Bad device name")
 		return (False)
@@ -250,22 +254,27 @@ def shutterLED(device,state):
 # Input variables: current (Int)
 # Legal input values: 0, 1, 2, 3 where b00=12.5mA; b01=25mA; b10=50mA; b11=100mA
 # Returns: Bool. True if OK.
-def setLEDDriveCurrent(current):
+def setLEDDriveCurrent(current, device):
 
-	devices = ["AS72651", "AS72652", "AS72653"]
-	
-	if current not in [0, 1, 2, 3]:
-		print ("Illegal current setting")
-		return (False)
+    # This would've set all the LED drive currents the same. No good
+    #devices = ["AS72651", "AS72652", "AS72653"]
+    
+    #AS72651: VISIBLE
+    #AS72652: IR
+    #AS72653: UV
+    
+    if current not in [0, 1, 2, 3]:
+        print ("Illegal current setting")
+        return (False)
 
-	for device in devices:
-		setDEVSEL(device)
-		configReg = readReg(0x07)
-		configReg = ( configReg & 0b11001111 )
-		configReg = configReg | (current << 4)
-		writeReg(0x07, configReg)
+    # for device in devices:
+    setDEVSEL(device)
+    configReg = readReg(0x07)
+    configReg = ( configReg & 0b11001111 )
+    configReg = configReg | (current << 4)
+    writeReg(0x07, configReg)
 
-	return (True)
+    return (True)
 
 
 # Set integration time for all sensors together
@@ -325,7 +334,7 @@ def readRAW():
 
 	RAWRegisters = [(0x08, 0x09), (0x0a, 0x0b), (0x0c, 0x0d), (0x0e, 0x0f), (0x10, 0x11), (0x12, 0x13)]
 	RAWValues = []
-	devices = ["AS72651", "AS72652", "AS72653"]
+	devices = ["AS72653", "AS72652", "AS72651"]
 	
 	for device in devices:
 		setDEVSEL(device)

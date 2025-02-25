@@ -8,13 +8,9 @@ $(function() {
     function PfvsViewModel(parameters) {
         var self = this;
 
-        // assign the injected parameters, e.g.:
-        // self.loginStateViewModel = parameters[0];
-        // self.settingsViewModel = parameters[1];
-
-        // TODO: Implement your plugin's view model here.
         self.spectrometerData = ko.observableArray([]);
         self.isSpectrometerRunning = ko.observable(false);
+        self.predictedMaterial = ko.observable("");
 
         self.startSpectrometer = function () {
             $.ajax({
@@ -50,6 +46,10 @@ $(function() {
 
             if (data.spectrometer_data) {
                 self.spectrometerData(data.spectrometer_data);
+            }
+
+            if (data.predicted_material) {  // Update predicted material
+                self.predictedMaterial(data.predicted_material);
             }
         };
     }
