@@ -71,12 +71,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             "template": None,
             }
         ]
-        
-    def send_gcode_to_printer(self, settings):
-        """Generates G-code based on settings and sends it to the printer."""
-        gcode_commands = generate_gcode(settings)
-        self._logger.info(f"Sending G-code commands: {gcode_commands}")
-        self._printer.commands(gcode_commands)
 
     ##~~ Event Handler Plugin
 
