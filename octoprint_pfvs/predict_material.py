@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import joblib
 
@@ -13,7 +14,7 @@ def predict_material(spectral_data, color_label):
         str: Predicted filament material.
     """
     # Define paths
-    model_dir = './models/'
+    model_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Load the trained model and preprocessing tools
     scaler = joblib.load(model_dir + 'scaler.pkl')
