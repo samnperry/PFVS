@@ -17,11 +17,11 @@ def predict_material(spectral_data, color_label):
     model_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Load the trained model and preprocessing tools
-    scaler = joblib.load(model_dir + 'scaler.pkl')
-    pca = joblib.load(model_dir + 'pca.pkl')
-    model = joblib.load(model_dir + 'svm_model.pkl')
-    material_encoder = joblib.load(model_dir + 'material_encoder.pkl')
-    color_encoder = joblib.load(model_dir + 'color_encoder.pkl')
+    scaler = joblib.load(model_dir + '/scaler.pkl')
+    pca = joblib.load(model_dir + '/pca.pkl')
+    model = joblib.load(model_dir + '/svm_model.pkl')
+    material_encoder = joblib.load(model_dir + '/material_encoder.pkl')
+    color_encoder = joblib.load(model_dir + '/color_encoder.pkl')
     # Ensure spectral data is a NumPy array
     spectral_data = np.array(spectral_data)
     
