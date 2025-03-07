@@ -10,7 +10,7 @@ import math
 from flask import jsonify
 import RPi.GPIO as GPIO
 from octoprint_pfvs import spectrometer as spect
-from octoprint_pfvs.filament_gcodes import FILAMENTS  # Updated to use the new FILAMENTS dict
+from octoprint_pfvs.filament_gcodes import FILAMENTS
 from octoprint_pfvs.predict_material import predict_material
 
 class PFVSPlugin(octoprint.plugin.SettingsPlugin,
@@ -31,9 +31,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
         try:
-            GPIO.setwarnings(False)
-            GPIO.setmode(GPIO.BOARD)
-            GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
             spect.init()
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
@@ -165,6 +162,9 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ Spectrometer Handling
     def is_filament_detected(self):
         """Returns True if the IR sensor detects filament."""
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         return GPIO.input(11) == GPIO.HIGH
 
     def start_spectrometer(self):
