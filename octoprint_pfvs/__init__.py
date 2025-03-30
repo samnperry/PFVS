@@ -196,19 +196,34 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     def read_spectrometer_data(self):
         """Reads data from the spectrometer and sends it to the web interface."""
         try:
-            spect.setGain(3)  
+            spect.setGain(3)
+            spect.setIntegrationTime(63)
+            spect.shutterLED("AS72651", False)
+            spect.shutterLED("AS72651", False)
+            spect.shutterLED("AS72651", False)
+            time.sleep(0.18)
+            dark_spect_data = spect.readRAW()  
+
+            spect.shutterLED("AS72651", True)
+            spect.shutterLED("AS72651", True)
+            spect.shutterLED("AS72651", True)
             while self.spectrometer_running:
                 # Reading spectrometer data
-                spect_data = spect.readCAL()
+                time.sleep(0.18)
+                light_spect_data = spect.readRAW() 
+
+                for i in range(len(light_spect_data)):
+                    light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
+
 
                 # Finally, pass the spectrometer data to the prediction function
-                predicted_material = predict_material(spect_data, 'R')
+                predicted_material = predict_material(light_spect_data, 'R')
                 self._logger.info(f"Predicted material: {predicted_material}")
 
                 # Send data to web UI
                 self._plugin_manager.send_plugin_message(
                     self._identifier, 
-                    {"spectrometer_data": spect_data, "predicted_material": predicted_material}
+                    {"spectrometer_data": light_spect_data, "predicted_material": predicted_material}
                 )
                 
                 time.sleep(1)  # Adjust sampling rate
