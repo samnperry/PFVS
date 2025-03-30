@@ -3,10 +3,6 @@ import numpy as np
 import joblib
 import logging
 
-
-# You can add a stream handler to log to the console and/or file if needed
-# If you're working within OctoPrint, OctoPrint's default logging setup will handle the file output.
-
 def predict_material(spectral_data, color_label):
     """
     Predicts the filament material given spectral data and a color label.
@@ -38,7 +34,7 @@ def predict_material(spectral_data, color_label):
         raise
     
     # Ensure spectral data is a NumPy array
-    spectral_data = np.array(spectral_data)
+    spectral_data = np.array(spectral_data, dtype=np.float32)  # Ensuring it's float32
     logger.debug(f"Spectral data type: {spectral_data.dtype}, shape: {spectral_data.shape}")
     
     # Validate input dimensions
@@ -56,11 +52,13 @@ def predict_material(spectral_data, color_label):
     
     # Combine spectral data with encoded color
     combined_sample = np.append(spectral_data, encoded_color).reshape(1, -1)
+    logger.debug(f"Combined sample shape: {combined_sample.shape}, dtype: {combined_sample.dtype}")
     
     # Scale the combined data
     try:
         scaled_sample = scaler.transform(combined_sample)
-        logger.debug("Data scaled successfully.")
+        scaled_sample = scaled_sample.astype(np.float32)  # Make sure scaled sample is float32
+        logger.debug(f"Scaled sample dtype after scaling: {scaled_sample.dtype}")
     except Exception as e:
         logger.error(f"Error scaling data: {e}")
         raise
@@ -68,8 +66,8 @@ def predict_material(spectral_data, color_label):
     # Apply PCA
     try:
         pca_sample = pca.transform(scaled_sample)
-        pca_sample = pca_sample.astype(np.float32)
-        logger.debug("PCA transformation applied.")
+        pca_sample = pca_sample.astype(np.float32)  # Ensure pca_sample is float32
+        logger.debug(f"PCA transformed sample dtype: {pca_sample.dtype}")
     except Exception as e:
         logger.error(f"Error applying PCA: {e}")
         raise
