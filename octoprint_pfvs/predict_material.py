@@ -76,6 +76,8 @@ def predict_material(spectral_data, color_label):
     try:
         logger.debug("Before Predicted")
         predicted_material_encoded = model.predict(pca_sample)
+        predicted_material_encoded = predicted_material_encoded.astype(np.int32)
+
         logger.debug("After Predicted")
         logger.debug(f"Predicted Material Encoded DType: {predicted_material_encoded.dtype}")
         predicted_material = material_encoder.inverse_transform(predicted_material_encoded)[0]
