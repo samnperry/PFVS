@@ -191,8 +191,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     def stop_spectrometer(self):
         """Stops the spectrometer thread."""
         spect.shutterLED("AS72651", False)
-        spect.shutterLED("AS72651", False)
-        spect.shutterLED("AS72651", False)
+        spect.shutterLED("AS72652", False)
+        spect.shutterLED("AS72653", False)
         self.spectrometer_running = False
         self._logger.info("Stopping spectrometer data collection.")
 
@@ -202,16 +202,16 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             spect.setGain(3)
             spect.setIntegrationTime(63)
             spect.shutterLED("AS72651", False)
-            spect.shutterLED("AS72651", False)
-            spect.shutterLED("AS72651", False)
+            spect.shutterLED("AS72652", False)
+            spect.shutterLED("AS72653", False)
             time.sleep(0.18)
             dark_spect_data = spect.readRAW()
             self._logger.info(f"Raw Dark Spectrometer Data: {dark_spect_data}")
             time.sleep(1.0)  
 
             spect.shutterLED("AS72651", True)
-            spect.shutterLED("AS72651", True)
-            spect.shutterLED("AS72651", True)
+            spect.shutterLED("AS72652", True)
+            spect.shutterLED("AS72653", True)
             while self.spectrometer_running:
                 # Reading spectrometer data
                 time.sleep(0.18)
