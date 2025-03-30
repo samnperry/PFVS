@@ -1,11 +1,11 @@
 import os
 import numpy as np
 import joblib
-
 import logging
-import octoprint.util
 
-# Initialize OctoPrint logger
+
+# You can add a stream handler to log to the console and/or file if needed
+# If you're working within OctoPrint, OctoPrint's default logging setup will handle the file output.
 
 def predict_material(spectral_data, color_label):
     """
@@ -18,8 +18,10 @@ def predict_material(spectral_data, color_label):
     Returns:
         str: Predicted filament material.
     """
-    logger = octoprint.util.getLogger(__name__)
+    logger = logging.getLogger("octoprint.plugins.pfvs")
+    logger.setLevel(logging.DEBUG)
     logger.debug("Starting material prediction process.")
+    
     # Define paths
     model_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -81,5 +83,3 @@ def predict_material(spectral_data, color_label):
         raise
     
     return predicted_material
-
-
