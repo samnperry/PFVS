@@ -106,24 +106,10 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
                 self._logger.info(f"Spectrometer data type: {type(spect_data)}")
                 self._logger.info(f"Spectrometer data: {spect_data}")
-
-                # If spect_data is a numpy array or list, you can cast it like this
-                spect_data = np.array(spect_data, dtype=np.int32)  # Cast to int32 safely
-
-                self._logger.info(f"Spectrometer data type: {type(spect_data)}")
-                self._logger.info(f"Spectrometer data: {spect_data}")
-
-                # Alternatively, ensure that you're not exceeding int32 limits manually
-                if any(x > np.iinfo(np.int32).max or x < np.iinfo(np.int32).min for x in spect_data):
-                    self._logger.error("Data exceeds int32 range!")
                 
                 predicted_material = predict_material(spect_data, 'R')
                 self._logger.info(f"Predicted material: {predicted_material}")
 
-                # If the material prediction is an integer, ensure it's within range
-                if isinstance(predicted_material, int):
-                    predicted_material = np.int32(predicted_material)
-                    self._logger.info(f"Predicted material type after conversion: {type(predicted_material)}")
 
                 # Check if the filament type is in the settings
                 if predicted_material in FILAMENTS:
@@ -215,35 +201,9 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 # Reading spectrometer data
                 spect_data = spect.readCAL()
 
-                # Logging to inspect the data type and contents
-                self._logger.info(f"Spectrometer data type: {type(spect_data)}")
-                self._logger.info(f"Spectrometer data: {spect_data}")
-
-                # Convert to a numpy array to ensure compatibility
-                spect_data = np.array(spect_data)
-
-                # Check the dtype before rounding and casting
-                self._logger.info(f"Spectrometer data type before rounding: {spect_data.dtype}")
-
-                # If the data type is floating point, round it
-                if np.issubdtype(spect_data.dtype, np.floating):
-                    spect_data = np.round(spect_data)  # Round the floating point data to integers
-
-                # After rounding, forcefully cast it to int32
-                spect_data = spect_data.astype(np.int32)  # Cast to int32 explicitly
-
-                # Check the new data type
-                self._logger.info(f"Spectrometer data type after rounding and casting: {spect_data.dtype}")
-                self._logger.info(f"Spectrometer data after rounding and casting: {spect_data}")
-
                 # Finally, pass the spectrometer data to the prediction function
                 predicted_material = predict_material(spect_data, 'R')
                 self._logger.info(f"Predicted material: {predicted_material}")
-
-                # If the material prediction is an integer, ensure it's within range
-                if isinstance(predicted_material, int):
-                    predicted_material = np.int32(predicted_material)
-                    self._logger.info(f"Predicted material type after conversion: {type(predicted_material)}")
 
                 # Send data to web UI
                 self._plugin_manager.send_plugin_message(

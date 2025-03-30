@@ -68,6 +68,7 @@ def predict_material(spectral_data, color_label):
     # Apply PCA
     try:
         pca_sample = pca.transform(scaled_sample)
+        pca_sample = pca_sample.astype(np.float32)
         logger.debug("PCA transformation applied.")
     except Exception as e:
         logger.error(f"Error applying PCA: {e}")
