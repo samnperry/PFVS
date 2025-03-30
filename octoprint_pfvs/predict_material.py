@@ -23,14 +23,14 @@ def predict_material(spectral_data, color_label):
     material_encoder = joblib.load(model_dir + '/material_encoder.pkl')
     color_encoder = joblib.load(model_dir + '/color_encoder.pkl')
     # Ensure spectral data is a NumPy array
-    spectral_data = np.array(spectral_data)
+    spectral_data = np.array(spectral_data, dtype=np.float32)
     
     # Validate input dimensions
     if spectral_data.shape[0] != 18:
         raise ValueError("Spectral data must contain exactly 18 channel values.")
     
     # Encode the color
-    encoded_color = color_encoder.transform([color_label])[0]
+    encoded_color = np.array([color_encoder.transform([color_label])[0]], dtype=np.int32)
     
     # Combine spectral data with encoded color
     combined_sample = np.append(spectral_data, encoded_color).reshape(1, -1)
