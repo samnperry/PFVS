@@ -202,14 +202,14 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             spect.shutterLED("AS72651", False)
             spect.shutterLED("AS72651", False)
             time.sleep(0.18)
-            dark_spect_data = spect.readRAW()  
+            dark_spect_data = spect.readRAW()
+            self._logger.info(f"Raw Dark Spectrometer Data: {dark_spect_data}")  
 
             spect.shutterLED("AS72651", True)
             spect.shutterLED("AS72651", True)
             spect.shutterLED("AS72651", True)
             while self.spectrometer_running:
                 # Reading spectrometer data
-                self._logger.info(f"Filament Sensor State: {GPIO.input(11)}")
                 time.sleep(0.18)
                 light_spect_data = spect.readRAW() 
 

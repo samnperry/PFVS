@@ -34,7 +34,7 @@ def predict_material(spectral_data, color_label):
         raise
     
     # Ensure spectral data is a NumPy array
-    spectral_data = np.array(spectral_data, dtype=np.float32)  # Ensuring it's float32
+    spectral_data = np.array(spectral_data)  # Ensuring it's float32
     logger.debug(f"Spectral data type: {spectral_data.dtype}, shape: {spectral_data.shape}")
     
     # Validate input dimensions
@@ -57,7 +57,6 @@ def predict_material(spectral_data, color_label):
     # Scale the combined data
     try:
         scaled_sample = scaler.transform(combined_sample)
-        scaled_sample = scaled_sample.astype(np.float32)  # Make sure scaled sample is float32
         logger.debug(f"Scaled sample dtype after scaling: {scaled_sample.dtype}")
     except Exception as e:
         logger.error(f"Error scaling data: {e}")
@@ -65,8 +64,7 @@ def predict_material(spectral_data, color_label):
     
     # Apply PCA
     try:
-        pca_sample = pca.transform(scaled_sample)
-        pca_sample = pca_sample.astype(np.float32)  # Ensure pca_sample is float32
+        pca_sample = pca.transform(scaled_sample) # Ensure pca_sample is float32
         logger.debug(f"PCA transformed sample dtype: {pca_sample.dtype}")
     except Exception as e:
         logger.error(f"Error applying PCA: {e}")
@@ -76,7 +74,7 @@ def predict_material(spectral_data, color_label):
     try:
         logger.debug("Before Predicted")
         predicted_material_encoded = model.predict(pca_sample)
-        predicted_material_encoded = predicted_material_encoded.astype(np.int32)
+        predicted_material_encoded = predicted_material_encoded.astype(np.float32)
 
         logger.debug("After Predicted")
         logger.debug(f"Predicted Material Encoded DType: {predicted_material_encoded.dtype}")
