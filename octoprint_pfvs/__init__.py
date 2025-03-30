@@ -212,34 +212,35 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         try:
             spect.setGain(3)  
             while self.spectrometer_running:
+                # Reading spectrometer data
                 spect_data = spect.readCAL()
 
                 # Logging to inspect the data type and contents
                 self._logger.info(f"Spectrometer data type: {type(spect_data)}")
                 self._logger.info(f"Spectrometer data: {spect_data}")
 
-                # Convert to a numpy array
+                # Convert to a numpy array to ensure compatibility
                 spect_data = np.array(spect_data)
 
-                # Check if the data is already in int64 or float
+                # Check the dtype before rounding and casting
                 self._logger.info(f"Spectrometer data type before rounding: {spect_data.dtype}")
 
-                # If the data type is floating point, we round the values first
-                if np.issubdtype(spect_data.dtype, np.floating):  
-                    spect_data = np.round(spect_data)  # Round to nearest integer
+                # If the data type is floating point, round it
+                if np.issubdtype(spect_data.dtype, np.floating):
+                    spect_data = np.round(spect_data)  # Round the floating point data to integers
 
-                # Now cast to int32 safely, ensuring it fits within int32 limits
-                spect_data = spect_data.astype(np.int32)  # Cast to int32
+                # After rounding, forcefully cast it to int32
+                spect_data = spect_data.astype(np.int32)  # Cast to int32 explicitly
 
-                # Check the new data type and content
+                # Check the new data type
                 self._logger.info(f"Spectrometer data type after rounding and casting: {spect_data.dtype}")
                 self._logger.info(f"Spectrometer data after rounding and casting: {spect_data}")
 
-                # Ensure that data is within int32 range
+                # Ensure that the data fits within int32 limits
                 if np.any(spect_data > np.iinfo(np.int32).max) or np.any(spect_data < np.iinfo(np.int32).min):
                     self._logger.error("Data exceeds int32 range!")
 
-                # Pass the spectrometer data to the prediction function
+                # Finally, pass the spectrometer data to the prediction function
                 predicted_material = predict_material(spect_data, 'R')
                 self._logger.info(f"Predicted material: {predicted_material}")
 
