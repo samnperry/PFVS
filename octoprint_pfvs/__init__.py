@@ -209,6 +209,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             spect.shutterLED("AS72651", True)
             while self.spectrometer_running:
                 # Reading spectrometer data
+                self._logger.info(f"Filament Sensor State: {GPIO.input(11)}")
                 time.sleep(0.18)
                 light_spect_data = spect.readRAW() 
 
@@ -217,6 +218,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
 
                 # Finally, pass the spectrometer data to the prediction function
+                self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
                 predicted_material = predict_material(light_spect_data, 'R')
                 self._logger.info(f"Predicted material: {predicted_material}")
 
