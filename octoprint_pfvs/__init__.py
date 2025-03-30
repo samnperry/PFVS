@@ -223,7 +223,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
                 # Finally, pass the spectrometer data to the prediction function
                 self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
-                predicted_material = predict_material(light_spect_data, 'R')
+                numbers = [394, 116, 334, 77, 173, 246, 75, 127, 110, 172, 46, 59, 19, 15, 28, 96, 25, 17]
+                predicted_material = predict_material(numbers, 'R')
                 self._logger.info(f"Predicted material: {predicted_material}")
 
                 # Send data to web UI
