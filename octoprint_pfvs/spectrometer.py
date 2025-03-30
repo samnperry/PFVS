@@ -232,7 +232,7 @@ def shutterLED(device,state):
 	try:
 		mode = DEVSELbits[device]
 		
-		print ("Debug: LEDMode = " + str(mode) + ", " + str(state))
+		# print ("Debug: LEDMode = " + str(mode) + ", " + str(state))
 	except:
 		print ("Bad device name")
 		return (False)
@@ -293,9 +293,9 @@ def setIntegrationTime(time):
 		setDEVSEL(device)
 		writeReg(0x05, time)
 		
-	for device in devices:
-		setDEVSEL(device)
-		print(readReg(0x05))
+	# for device in devices:
+		# setDEVSEL(device)
+		# print(readReg(0x05))
 
 	return (True)
 
@@ -319,9 +319,9 @@ def setGain(gain):
 		configReg = configReg | (gain << 4)
 		writeReg(0x04, configReg)
 		
-	for device in devices:
-		setDEVSEL(device)
-		print(readReg(0x04))
+	# for device in devices:
+		# setDEVSEL(device)
+		# print(readReg(0x04))
 
 	return (True)
 
