@@ -18,7 +18,7 @@ def predict_material(spectral_data, color_label):
     Returns:
         str: Predicted filament material.
     """
-    logger = octoprint.util.get_logger(__name__)
+    logger = octoprint.util.getLogger(__name__)
     logger.debug("Starting material prediction process.")
     # Define paths
     model_dir = os.path.dirname(os.path.abspath(__file__))
