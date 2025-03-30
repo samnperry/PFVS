@@ -7,6 +7,7 @@ import re
 import sys
 import os
 import math
+import numpy as np
 from flask import jsonify
 import RPi.GPIO as GPIO
 from octoprint_pfvs import spectrometer as spect
@@ -102,9 +103,27 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 self._logger.info("Filament detected. Running spectrometer scan...")
                 spect.setGain(3)
                 spect_data = spect.readCAL()
-                predicted_material = predict_material(spect_data, 'R')
 
-                self._logger.info(f"Predicted filament type: {predicted_material}")
+                self._logger.info(f"Spectrometer data type: {type(spect_data)}")
+                self._logger.info(f"Spectrometer data: {spect_data}")
+
+                # If spect_data is a numpy array or list, you can cast it like this
+                spect_data = np.array(spect_data, dtype=np.int32)  # Cast to int32 safely
+
+                self._logger.info(f"Spectrometer data type: {type(spect_data)}")
+                self._logger.info(f"Spectrometer data: {spect_data}")
+
+                # Alternatively, ensure that you're not exceeding int32 limits manually
+                if any(x > np.iinfo(np.int32).max or x < np.iinfo(np.int32).min for x in spect_data):
+                    self._logger.error("Data exceeds int32 range!")
+                
+                predicted_material = predict_material(spect_data, 'R')
+                self._logger.info(f"Predicted material: {predicted_material}")
+
+                # If the material prediction is an integer, ensure it's within range
+                if isinstance(predicted_material, int):
+                    predicted_material = np.int32(predicted_material)
+                    self._logger.info(f"Predicted material type after conversion: {type(predicted_material)}")
 
                 # Check if the filament type is in the settings
                 if predicted_material in FILAMENTS:
@@ -193,13 +212,33 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         try:
             spect.setGain(3)  
             while self.spectrometer_running:
-                CALvalues = spect.readCAL()
-                predicted_material = predict_material(CALvalues, 'R')
+                spect_data = spect.readCAL()
+
+                self._logger.info(f"Spectrometer data type: {type(spect_data)}")
+                self._logger.info(f"Spectrometer data: {spect_data}")
+
+                # If spect_data is a numpy array or list, you can cast it like this
+                spect_data = np.array(spect_data, dtype=np.int32)  # Cast to int32 safely
+
+                self._logger.info(f"Spectrometer data type: {type(spect_data)}")
+                self._logger.info(f"Spectrometer data: {spect_data}")
+
+                # Alternatively, ensure that you're not exceeding int32 limits manually
+                if any(x > np.iinfo(np.int32).max or x < np.iinfo(np.int32).min for x in spect_data):
+                    self._logger.error("Data exceeds int32 range!")
+                
+                predicted_material = predict_material(spect_data, 'R')
+                self._logger.info(f"Predicted material: {predicted_material}")
+
+                # If the material prediction is an integer, ensure it's within range
+                if isinstance(predicted_material, int):
+                    predicted_material = np.int32(predicted_material)
+                    self._logger.info(f"Predicted material type after conversion: {type(predicted_material)}")
 
                 # Send data to web UI
                 self._plugin_manager.send_plugin_message(
                     self._identifier, 
-                    {"spectrometer_data": CALvalues, "predicted_material": predicted_material}
+                    {"spectrometer_data": spect_data, "predicted_material": predicted_material}
                 )
                 
                 time.sleep(1)  # Adjust sampling rate
