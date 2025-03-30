@@ -236,10 +236,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 self._logger.info(f"Spectrometer data type after rounding and casting: {spect_data.dtype}")
                 self._logger.info(f"Spectrometer data after rounding and casting: {spect_data}")
 
-                # Ensure that the data fits within int32 limits
-                if np.any(spect_data > np.iinfo(np.int32).max) or np.any(spect_data < np.iinfo(np.int32).min):
-                    self._logger.error("Data exceeds int32 range!")
-
                 # Finally, pass the spectrometer data to the prediction function
                 predicted_material = predict_material(spect_data, 'R')
                 self._logger.info(f"Predicted material: {predicted_material}")
