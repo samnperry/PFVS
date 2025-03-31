@@ -260,7 +260,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 # Send data to web UI
                 self._plugin_manager.send_plugin_message(
                     self._identifier, 
-                    {"spectrometer_data": light_spect_data, "predicted_material": predicted_material}
+                    {"spectrometer_data": light_spect_data, "predicted_material": predicted_material, "color" : detected_color}
                 )
                 
                 time.sleep(1)  # Adjust sampling rate
