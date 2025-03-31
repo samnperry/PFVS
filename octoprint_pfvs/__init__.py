@@ -100,37 +100,37 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_unloading = False
             self._logger.info("Filament is being loaded.")
 
-            if self.is_filament_detected():  # Check if filament is present
-                self._logger.info("Filament detected. Running spectrometer scan and color sensor...")
+            # if self.is_filament_detected():  # Check if filament is present
+            self._logger.info("Filament detected. Running spectrometer scan and color sensor...")
 
                 # Run the color sensor
-                red, green, blue = self.detect_filament_color()
-                self._logger.info(f"Detected RGB Values: R={red}, G={green}, B={blue}")
+            red, green, blue = self.detect_filament_color()
+            self._logger.info(f"Detected RGB Values: R={red}, G={green}, B={blue}")
 
                 # Determine filament color
-                detected_color = self.map_color_to_filament(red, green, blue)
-                self._logger.info(f"Detected Filament Color: {detected_color}")
+            detected_color = self.map_color_to_filament(red, green, blue)
+            self._logger.info(f"Detected Filament Color: {detected_color}")
 
                 # Run spectrometer scan
-                spect.setGain(3)
-                spect_data = spect.readCAL()
-                predicted_material = predict_material(spect_data, detected_color)
-                self._logger.info(f"Predicted material: {predicted_material}")
+            spect.setGain(3)
+            spect_data = spect.readCAL()
+            predicted_material = predict_material(spect_data, detected_color)
+            self._logger.info(f"Predicted material: {predicted_material}")
 
                 # Verify filament type and update temperature settings
-                if predicted_material in FILAMENTS:
-                    filament = FILAMENTS[predicted_material]
-                    current_temp = self._printer.get_current_temperatures()["tool0"]["actual"]
+            if predicted_material in FILAMENTS:
+                filament = FILAMENTS[predicted_material]
+                current_temp = self._printer.get_current_temperatures()["tool0"]["actual"]
 
-                    self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {filament.print_temp}°C")
+                self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {filament.print_temp}°C")
 
-                    if not math.isclose(current_temp, filament.print_temp, rel_tol=0.05):
-                        self._logger.info("Temperature mismatch detected. Sending new G-code settings...")
-                        gcode_commands = filament.generate_gcode()
-                        self._printer.commands(gcode_commands)
-                        self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
-                else:
-                    self._logger.warning(f"Unknown filament type: {predicted_material}. No preset settings found.")
+                if not math.isclose(current_temp, filament.print_temp, rel_tol=0.05):
+                    self._logger.info("Temperature mismatch detected. Sending new G-code settings...")
+                    gcode_commands = filament.generate_gcode()
+                    self._printer.commands(gcode_commands)
+                    self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
+            else:
+                self._logger.warning(f"Unknown filament type: {predicted_material}. No preset settings found.")
 
 
         elif "M702" in line:  # Filament unload command detected
@@ -143,7 +143,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_unloading = False
             
         match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)    
-        if match and self.is_filament_detected():
+        if match: # and self.is_filament_detected():
             current_temp = float(match.group(1))  
             target_temp = float(match.group(2))
             spect.setGain(3)
@@ -206,9 +206,9 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self._logger.info("Spectrometer is already running.")
             return
         
-        if not self.is_filament_detected():
-            self._logger.warning("No filament detected. Spectrometer will not start.")
-            return
+        # if not self.is_filament_detected():
+            # self._logger.warning("No filament detected. Spectrometer will not start.")
+            # return
         
         # Add if statement to see if there is filament detected first before running a scan
         self.spectrometer_running = True
