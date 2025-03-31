@@ -28,6 +28,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.print_paused = False
         self.spectrometer_thread = None
         self.spectrometer_running = False 
+        self.predicted_material = ""
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
@@ -101,26 +102,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
             if self.is_filament_detected():  # Check if filament is present
                 # Run spectrometer scan
-                spect.setGain(3)
-                spect_data = spect.readCAL()
-                predicted_material = predict_material(spect_data, 'G')
-                self._logger.info(f"Predicted material: {predicted_material}")
-
-                    # Verify filament type and update temperature settings
-                if predicted_material in FILAMENTS:
-                    filament = FILAMENTS[predicted_material]
-                    current_temp = self._printer.get_current_temperatures()["tool0"]["actual"]
-
-                    self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {filament.print_temp}°C")
-
-                    if not math.isclose(current_temp, filament.print_temp, rel_tol=0.05):
-                        self._logger.info("Temperature mismatch detected. Sending new G-code settings...")
-                        gcode_commands = filament.generate_gcode()
-                        self._printer.commands(gcode_commands)
-                        self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
-                else:
-                    self._logger.warning(f"Unknown filament type: {predicted_material}. No preset settings found.")
-
+                self.filament_scan()
 
         elif "M702" in line:  # Filament unload command detected
             self.is_filament_loading = False
@@ -132,20 +114,23 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_unloading = False
             
         match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)    
-        if match: # and self.is_filament_detected():
+        if match and self.is_filament_detected() and ("M117" in line):
             current_temp = float(match.group(1))  
             target_temp = float(match.group(2))
-            spect.setGain(3)
-            spect_data = spect.readCAL()
 
             # Check if we are close to the target temperature
             if self.print_started and current_temp >= 0.95 * target_temp:
-                predicted_material = predict_material(spect_data, 'R')
+                self.filament_scan()
+                if self.predicted_material == "ASA":
+                    self._logger.info(f"Cannot print ASA on Prusa Mini")
+                    self._printer.cancel_print()
+                    return line
+
                 # If target temperature is incorrect, adjust it first
                 if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
                     self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
-                    if predicted_material in FILAMENTS:
-                        filament = FILAMENTS[predicted_material]
+                    if self.predicted_material in FILAMENTS: 
+                        filament = FILAMENTS[self.predicted_material]
 
                         self._logger.info(f"Current temp: {current_temp}°C | Expected temp: {filament.print_temp}°C")
                         self._logger.info("Temperature mismatch detected. Sending new G-code settings...")
@@ -153,12 +138,13 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                         self._printer.commands(gcode_commands)
                         self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                     else:
-                        self._logger.warning(f"Unknown filament type: {predicted_material}. No preset settings found.")
+                        self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
 
                 # Start a separate thread to resume after 30 seconds
                 threading.Thread(target=self.delayed_resume_print, daemon=True).start()    
 
         return line
+
 
     ##~~ Spectrometer Handling
     def is_filament_detected(self):
@@ -168,6 +154,41 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         return GPIO.input(11) == GPIO.HIGH
 
+    def filament_scan(self):
+        try:
+            spect.setGain(3)
+            spect.setIntegrationTime(63)
+            spect.shutterLED("AS72651", False)
+            spect.shutterLED("AS72652", False)
+            spect.shutterLED("AS72653", False)
+            time.sleep(0.18)
+            dark_spect_data = spect.readRAW()
+            self._logger.info(f"Raw Dark Spectrometer Data: {dark_spect_data}")
+            time.sleep(1.0)  
+
+            spect.shutterLED("AS72651", True)
+            spect.shutterLED("AS72652", True)
+            spect.shutterLED("AS72653", True)
+            # Reading spectrometer data
+            time.sleep(0.18)
+            light_spect_data = spect.readRAW()
+            time.sleep(0.18)
+            light_spect_data = spect.readRAW()
+            time.sleep(0.18)
+            light_spect_data = spect.readRAW()
+             
+
+            for i in range(len(light_spect_data)):
+                    light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
+                
+                # Finally, pass the spectrometer data to the prediction function
+            self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
+            self.predicted_material = predict_material(light_spect_data, 'G')
+            self._logger.info(f"Predicted material: {self.predicted_material}") 
+            time.sleep(1)  # Adjust sampling rate
+        except Exception as e:
+            self._logger.error(f"Error reading spectrometer data: {e}")
+            
     def start_spectrometer(self):
         """Starts a separate thread for reading spectrometer data."""
         if self.spectrometer_running:

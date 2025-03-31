@@ -18,7 +18,7 @@ class Filament:
 # Define available filament types
 FILAMENTS: Dict[str, Filament] = {
     "PLA": Filament("PLA", 210, 60),
-    "PETG": Filament("PETG", 240, 85),
+    "PET": Filament("PET", 240, 85),
     "ASA": Filament("ASA", 260, 100),
 }
 
