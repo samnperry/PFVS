@@ -11,7 +11,6 @@ $(function() {
         self.spectrometerData = ko.observableArray([]);
         self.isSpectrometerRunning = ko.observable(false);
         self.predictedMaterial = ko.observable("");
-        self.detectedColor = ko.observable("");
 
         self.startSpectrometer = function () {
             $.ajax({
@@ -51,10 +50,6 @@ $(function() {
 
             if (data.predicted_material) {  // Update predicted material
                 self.predictedMaterial(data.predicted_material);
-            }
-
-            if (data.detected_color) {  // Update detected color
-                self.detectedColor(data.detected_color);
             }
         };
     }
