@@ -183,7 +183,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 
                 # Finally, pass the spectrometer data to the prediction function
             self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
-            self.predicted_material = predict_material(light_spect_data, 'G')
+            self.predicted_material = predict_material(light_spect_data, 'R')
             self._logger.info(f"Predicted material: {self.predicted_material}") 
             time.sleep(1)  # Adjust sampling rate
         except Exception as e:
@@ -239,7 +239,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 
                 # Finally, pass the spectrometer data to the prediction function
                 self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
-                predicted_material = predict_material(light_spect_data, 'G')
+                predicted_material = predict_material(light_spect_data, 'R')
                 self._logger.info(f"Predicted material: {predicted_material}")
 
                 # Send data to web UI
