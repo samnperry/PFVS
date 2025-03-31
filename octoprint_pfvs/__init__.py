@@ -98,11 +98,15 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         if "M701" in line:  # Filament load command detected
             self.is_filament_loading = True
             self.is_filament_unloading = False
-            self._logger.info("Filament is being loaded.")
-
-            if self.is_filament_detected():  # Check if filament is present
+            self._logger.info("Filament is being loaded.") # Check if filament is present
                 # Run spectrometer scan
-                self.filament_scan()
+            self.filament_scan()
+            self._logger.info("Filament is loaded and scan happened")
+            self._logger.info(f"Predicted material: {self.predicted_material}") 
+            self._plugin_manager.send_plugin_message(
+                self._identifier, 
+                {"predicted_material": self.predicted_material}
+            )
 
         elif "M702" in line:  # Filament unload command detected
             self.is_filament_loading = False
@@ -114,13 +118,19 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_unloading = False
             
         match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)    
-        if match and self.is_filament_detected() and ("M117" in line):
+        if match and self.is_filament_detected() and ("SD printing" in line):
+            self._printer.pause_print()
             current_temp = float(match.group(1))  
             target_temp = float(match.group(2))
 
             # Check if we are close to the target temperature
             if self.print_started and current_temp >= 0.95 * target_temp:
                 self.filament_scan()
+                self._logger.info(f"Predicted material: {self.predicted_material}") 
+                self._plugin_manager.send_plugin_message(
+                    self._identifier, 
+                    {"predicted_material": self.predicted_material}
+                )
                 if self.predicted_material == "ASA":
                     self._logger.info(f"Cannot print ASA on Prusa Mini")
                     self._printer.cancel_print()
