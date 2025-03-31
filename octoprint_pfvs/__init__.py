@@ -124,7 +124,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             target_temp = float(match.group(2))
 
             # Check if we are close to the target temperature
-            if self.print_started and current_temp >= 0.95 * target_temp:
+            if current_temp >= 0.95 * target_temp:
                 self.filament_scan()
                 self._logger.info(f"Predicted material: {self.predicted_material}") 
                 self._plugin_manager.send_plugin_message(
