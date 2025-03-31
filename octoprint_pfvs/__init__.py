@@ -11,6 +11,7 @@ import numpy as np
 from flask import jsonify
 import RPi.GPIO as GPIO
 from octoprint_pfvs import spectrometer as spect
+from octoprint_pfvs.color_sensor import setup, redScan, blueScan, greenScan
 from octoprint_pfvs.filament_gcodes import FILAMENTS
 from octoprint_pfvs.predict_material import predict_material
 
@@ -100,18 +101,23 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self._logger.info("Filament is being loaded.")
 
             if self.is_filament_detected():  # Check if filament is present
-                self._logger.info("Filament detected. Running spectrometer scan...")
+                self._logger.info("Filament detected. Running spectrometer scan and color sensor...")
+
+                # Run the color sensor
+                red, green, blue = self.detect_filament_color()
+                self._logger.info(f"Detected RGB Values: R={red}, G={green}, B={blue}")
+
+                # Determine filament color
+                detected_color = self.map_color_to_filament(red, green, blue)
+                self._logger.info(f"Detected Filament Color: {detected_color}")
+
+                # Run spectrometer scan
                 spect.setGain(3)
                 spect_data = spect.readCAL()
-
-                self._logger.info(f"Spectrometer data type: {type(spect_data)}")
-                self._logger.info(f"Spectrometer data: {spect_data}")
-                
-                predicted_material = predict_material(spect_data, 'R')
+                predicted_material = predict_material(spect_data, detected_color)
                 self._logger.info(f"Predicted material: {predicted_material}")
 
-
-                # Check if the filament type is in the settings
+                # Verify filament type and update temperature settings
                 if predicted_material in FILAMENTS:
                     filament = FILAMENTS[predicted_material]
                     current_temp = self._printer.get_current_temperatures()["tool0"]["actual"]
@@ -125,6 +131,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                         self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                 else:
                     self._logger.warning(f"Unknown filament type: {predicted_material}. No preset settings found.")
+
 
         elif "M702" in line:  # Filament unload command detected
             self.is_filament_loading = False
@@ -171,6 +178,27 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         return GPIO.input(11) == GPIO.HIGH
+    
+    def detect_filament_color(self):
+        """Runs the color sensor and returns RGB values."""
+        self._logger.info("Running filament color sensor...")
+        setup()  # Initialize GPIO pins
+        red = round(255 * ((redScan() - 40) / (106 - 40)))
+        green = round(255 * ((greenScan() - 40) / (108 - 40)))
+        blue = round(255 * ((blueScan() - 48) / (123 - 48)))
+        return red, green, blue
+
+    def map_color_to_filament(self, red, green, blue):
+        """Maps detected RGB values to filament colors."""
+        if red > green and red > blue:
+            return 'R'
+        elif blue > green:
+            return 'B'
+        elif green > blue:
+            return 'G'
+        else:
+            return "Unknown Color"
+
 
     def start_spectrometer(self):
         """Starts a separate thread for reading spectrometer data."""
@@ -220,10 +248,13 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 for i in range(len(light_spect_data)):
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
 
-
+                red, green, blue = self.detect_filament_color()
+                detected_color = self.map_color_to_filament(red, green, blue)
+                self._logger.info(f"Detected Filament Color: {detected_color}")
+                
                 # Finally, pass the spectrometer data to the prediction function
                 self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
-                predicted_material = predict_material(light_spect_data, 'G')
+                predicted_material = predict_material(light_spect_data, detected_color)
                 self._logger.info(f"Predicted material: {predicted_material}")
 
                 # Send data to web UI

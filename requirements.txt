@@ -6,4 +6,10 @@
 # works as expected. Requirements can be found in setup.py.
 ###
 
-.
+smbus2
+numpy
+joblib
+octoprint
+flask
+RPi.GPIO
+scikit-learn
