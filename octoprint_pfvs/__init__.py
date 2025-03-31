@@ -118,7 +118,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_unloading = False
             
         match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)    
-        if match and self.is_filament_detected() and ("SD printing" in line):
+        if match and ("SD printing" in line):
             self._printer.pause_print()
             current_temp = float(match.group(1))  
             target_temp = float(match.group(2))
