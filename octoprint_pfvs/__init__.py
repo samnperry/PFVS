@@ -84,7 +84,9 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
             if new_state == "STARTING":
                 self._logger.info("Print is officially starting.")
-                self.print_starting = True  # Set flag when print starts
+                self.print_starting = True
+            else:
+                self.print_starting = False
 
     def delayed_resume_print(self):
         time.sleep(30)
