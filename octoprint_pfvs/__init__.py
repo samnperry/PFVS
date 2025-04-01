@@ -151,11 +151,14 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             # Adjust settings if the detected filament doesn't match target temp
             if self.predicted_material in FILAMENTS:
                 filament = FILAMENTS[self.predicted_material]
-                if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
-                    self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
-                    gcode_commands = filament.generate_gcode()
-                    self._printer.commands(["M400"] + gcode_commands)
-                    self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
+                current_time = time.time()
+                if (not hasattr(self, "last_temp_change_time")) or (current_time - self.last_temp_change_time > 10):
+                    if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
+                        self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
+                        gcode_commands = filament.generate_gcode()
+                        self._printer.commands(["M400"] + gcode_commands)
+                        self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
+                        self.last_temp_change_time = current_time  # Store last update time
             else:
                 self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
             
@@ -170,7 +173,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        return GPIO.input(11) == GPIO.HIGH
+        return GPIO.input(11) == GPIO.LOW
 
     def filament_scan(self):
         try:
