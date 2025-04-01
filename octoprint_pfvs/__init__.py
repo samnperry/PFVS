@@ -82,7 +82,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             new_state = payload.get("state_id")
             self._logger.info(f"New printer state: {new_state}")
 
-            if new_state == "STARTING":
+            if new_state == "PAUSING":
                 self._logger.info("Print is officially starting.")
                 self.print_starting = True  # Set flag when print starts
 
@@ -119,43 +119,44 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_loading = False
             self.is_filament_unloading = False
             
-        match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)
-        if not match:
-            return line  # Skip if no match
-        
-        self._logger.info({match})
-        target_temp = float(match.group(2))
-        self._logger.info({target_temp})
+        if self.print_starting:    
+            match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)
+            if not match:
+                return line  # Skip if no match
+            
+            self._logger.info({match})
+            target_temp = float(match.group(2))
+            self._logger.info({target_temp})
 
-        # If we're still in probing phase, ignore temperatures
-        if self.waiting_for_final_temp:
-            if target_temp != 170.0:  # This means it switched to the final temp
-                self.waiting_for_final_temp = False  # Now we can proceed
+            # If we're still in probing phase, ignore temperatures
+            if self.waiting_for_final_temp:
+                if target_temp != 170.0:  # This means it switched to the final temp
+                    self.waiting_for_final_temp = False  # Now we can proceed
+                else:
+                    return line  # Still in probing phase
+
+            self.filament_scan()
+            self._logger.info(f"Predicted material: {self.predicted_material}")  
+            self._plugin_manager.send_plugin_message(
+                self._identifier, 
+                {"predicted_material": self.predicted_material}
+            )
+
+            if self.predicted_material == "ASA" or self.predicted_material == "PET":
+                self._logger.info(f"Cannot print ASA on Prusa Mini")
+                self._printer.cancel_print()
+                return line
+
+            # Adjust settings if the detected filament doesn't match target temp
+            if self.predicted_material in FILAMENTS:
+                filament = FILAMENTS[self.predicted_material]
+                if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
+                    self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
+                    gcode_commands = filament.generate_gcode()
+                    self._printer.commands(gcode_commands)
+                    self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
             else:
-                return line  # Still in probing phase
-
-        self.filament_scan()
-        self._logger.info(f"Predicted material: {self.predicted_material}")  
-        self._plugin_manager.send_plugin_message(
-            self._identifier, 
-            {"predicted_material": self.predicted_material}
-        )
-
-        if self.predicted_material == "ASA" or self.predicted_material == "PET":
-            self._logger.info(f"Cannot print ASA on Prusa Mini")
-            self._printer.cancel_print()
-            return line
-
-        # Adjust settings if the detected filament doesn't match target temp
-        if self.predicted_material in FILAMENTS:
-            filament = FILAMENTS[self.predicted_material]
-            if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
-                self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
-                gcode_commands = filament.generate_gcode()
-                self._printer.commands(gcode_commands)
-                self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
-        else:
-            self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
+                self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
             
         self.waiting_for_final_temp = True    
 
