@@ -82,7 +82,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             new_state = payload.get("state_id")
             self._logger.info(f"New printer state: {new_state}")
 
-            if new_state == "PAUSING":
+            if new_state == "STARTING":
                 self._logger.info("Print is officially starting.")
                 self.print_starting = True  # Set flag when print starts
 
