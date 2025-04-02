@@ -135,32 +135,35 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                     self.waiting_for_final_temp = False  # Now we can proceed
                 else:
                     return line  # Still in probing phase
-            # if "Extrapolating mesh...done" in line:
-            self.filament_scan()
-            self._logger.info(f"Predicted material: {self.predicted_material}")  
-            self._plugin_manager.send_plugin_message(
-                self._identifier, 
-                {"predicted_material": self.predicted_material}
-            )
+            if current_temp * 0.95 >= target_temp:
+                self._printer.pause_print()
+                self.filament_scan()
+                self._logger.info(f"Predicted material: {self.predicted_material}")  
+                self._plugin_manager.send_plugin_message(
+                    self._identifier, 
+                    {"predicted_material": self.predicted_material}
+                )
 
-            if self.predicted_material == "ASA" or self.predicted_material == "PET":
-                self._logger.info(f"Cannot print ASA on Prusa Mini")
-                self._printer.cancel_print()
-                return line
+                if self.predicted_material == "ASA" or self.predicted_material == "PET":
+                    self._logger.info(f"Cannot print ASA on Prusa Mini")
+                    self._printer.cancel_print()
+                    return line
 
-            # Adjust settings if the detected filament doesn't match target temp
-            if self.predicted_material in FILAMENTS:
-                filament = FILAMENTS[self.predicted_material]
-                current_time = time.time()
-                if (not hasattr(self, "last_temp_change_time")) or (current_time - self.last_temp_change_time > 10):
-                    if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
-                        self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
-                        gcode_commands = filament.generate_gcode()
-                        self._printer.commands(["M400"] + gcode_commands)
-                        self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
-                        self.last_temp_change_time = current_time  # Store last update time
-            else:
-                self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
+                # Adjust settings if the detected filament doesn't match target temp
+                if self.predicted_material in FILAMENTS:
+                    filament = FILAMENTS[self.predicted_material]
+                    current_time = time.time()
+                    if (not hasattr(self, "last_temp_change_time")) or (current_time - self.last_temp_change_time > 10):
+                        if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
+                            self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
+                            gcode_commands = filament.generate_gcode()
+                            self._printer.commands(["M400"] + gcode_commands)
+                            self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
+                            self.last_temp_change_time = current_time  # Store last update time
+                else:
+                    self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
+                    
+                self._printer.resume_print()
             
         self.waiting_for_final_temp = True    
 
