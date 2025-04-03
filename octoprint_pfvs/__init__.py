@@ -144,13 +144,14 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 if target_temp * 0.99 <= current_temp:
                     self._logger.debug("Current Temp: ", current_temp)
                     self._logger.debug("Target Temp * 0.99: ", target_temp * 0.99)
-                    self.filament_scan()
-                    self.filament_scan()
-                    self._logger.info(f"Predicted material: {self.predicted_material}")  
-                    self._plugin_manager.send_plugin_message(
-                        self._identifier, 
-                        {"predicted_material": self.predicted_material}
-                    )
+                    if (self.predicted_material == ""):
+                        self.filament_scan()
+                        self.filament_scan()
+                        self._logger.info(f"Predicted material: {self.predicted_material}")  
+                        self._plugin_manager.send_plugin_message(
+                            self._identifier, 
+                            {"predicted_material": self.predicted_material}
+                        )
 
                     if self.predicted_material == "ASA":
                         self.count_asa += 1
