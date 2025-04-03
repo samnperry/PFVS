@@ -68,7 +68,6 @@ def predict_material(spectral_data, color_label):
         predicted_material_encoded = model.predict(pca_sample)
         predicted_material_encoded = predicted_material_encoded.astype(np.int32)
         predicted_material = material_encoder.inverse_transform(predicted_material_encoded)[0]
-        logger.debug(f"Predicted Material: {predicted_material}")
     except Exception as e:
         logger.error(f"Error predicting material: {e}")
         raise
