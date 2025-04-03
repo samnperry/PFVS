@@ -138,6 +138,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
             if target_temp != 170.0 or target_temp != 0.0:  # This means it switched to the final temp
                 if target_temp * 0.99 <= current_temp:
+                    self._printer.pause_print()
                     self._logger.debug("Current Temp: ", current_temp)
                     self._logger.debug("Target Temp * 0.85: ", target_temp * 0.85)
                     self.filament_scan()
@@ -177,6 +178,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                                 self.last_temp_change_time = current_time  # Store last update time
                     else:
                         self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
+                    self._printer.resume_print()    
             else:
                 return line            
             
