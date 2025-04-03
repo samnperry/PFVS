@@ -27,7 +27,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.is_filament_unloading = False
         self.print_paused = False
         self.print_starting = False
-        self.print_start = False
         self.spectrometer_thread = None
         self.spectrometer_running = False 
         self.waiting_for_final_temp = True
@@ -92,13 +91,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             if new_state == "STARTING":
                 self._logger.info("Print is officially starting.")
                 self.print_starting = True
-                self.print_start = False
-            elif new_state == "PRINTING":
-                self.print_start = True
-                self.print_starting = False
             else:
                 self.print_start = False
-                self.print_starting = False
                 
 
     def delayed_resume_print(self):
@@ -149,49 +143,48 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 else:
                     return line  # Still in probing phase
             
-            if self.print_start:
-                self._logger.info("Pausing print to verify filament and adjust temperature.")
-                self._printer.pause_print()
-                self.filament_scan()
-                self.filament_scan()
-                self._logger.info(f"Predicted material: {self.predicted_material}")  
-                self._plugin_manager.send_plugin_message(
-                    self._identifier, 
-                    {"predicted_material": self.predicted_material}
-                )
+            self._logger.info("Pausing print to verify filament and adjust temperature.")
+            self._printer.pause_print()
+            self.filament_scan()
+            self.filament_scan()
+            self._logger.info(f"Predicted material: {self.predicted_material}")  
+            self._plugin_manager.send_plugin_message(
+                self._identifier, 
+                {"predicted_material": self.predicted_material}
+            )
 
-                if self.predicted_material == "ASA":
-                    self.count_asa += 1
-                    self.count_stops += 1
-                    self._logger.info(f"Cannot print ASA on Prusa Mini")
-                    self._printer.cancel_print()
-                    return line
-                
-                if self.predicted_material == "PETG":
-                    self.count_petg += 1
-                    self.count_stops += 1
-                    self._logger.info(f"Cannot print PETG on Prusa Mini")
-                    self._printer.cancel_print()
-                    return line
-
-                # Adjust settings if the detected filament doesn't match target temp
-                if self.predicted_material in FILAMENTS and self.predicted_material == "PLA":
-                    self.count_pla += 1
-                    filament = FILAMENTS[self.predicted_material]
-                    current_time = time.time()
-                    if (not hasattr(self, "last_temp_change_time")) or (current_time - self.last_temp_change_time > 10):
-                        if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
-                            self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
-                            self.count_settings += 1
-                            gcode_commands = ["M400"] + filament.generate_gcode()
-                            self._printer.commands(["M400","M109"] + gcode_commands, force=True)
-                            self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
-                            self.last_temp_change_time = current_time  # Store last update time
-                else:
-                    self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
+            if self.predicted_material == "ASA":
+                self.count_asa += 1
+                self.count_stops += 1
+                self._logger.info(f"Cannot print ASA on Prusa Mini")
+                self._printer.cancel_print()
+                return line
             
-                self._logger.info("Temperature adjusted. Resuming print.")    
-                self._printer.resume_print()
+            if self.predicted_material == "PETG":
+                self.count_petg += 1
+                self.count_stops += 1
+                self._logger.info(f"Cannot print PETG on Prusa Mini")
+                self._printer.cancel_print()
+                return line
+
+            # Adjust settings if the detected filament doesn't match target temp
+            if self.predicted_material in FILAMENTS and self.predicted_material == "PLA":
+                self.count_pla += 1
+                filament = FILAMENTS[self.predicted_material]
+                current_time = time.time()
+                if (not hasattr(self, "last_temp_change_time")) or (current_time - self.last_temp_change_time > 10):
+                    if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
+                        self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
+                        self.count_settings += 1
+                        gcode_commands = ["M400"] + filament.generate_gcode()
+                        self._printer.commands(["M400","M109"] + gcode_commands, force=True)
+                        self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
+                        self.last_temp_change_time = current_time  # Store last update time
+            else:
+                self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
+        
+            self._logger.info("Temperature adjusted. Resuming print.")    
+            self._printer.resume_print()
             
         self.waiting_for_final_temp = True    
 
