@@ -113,6 +113,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self._logger.info("Filament is being loaded.") # Check if filament is present
                 # Run spectrometer scan
             self.filament_scan()
+            self.filament_scan()
             self._logger.info("Filament is loaded and scan happened")
             self._logger.info(f"Predicted material: {self.predicted_material}") 
             self._plugin_manager.send_plugin_message(
@@ -123,6 +124,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         elif "M702" in line:  # Filament unload command detected
             self.is_filament_loading = False
             self.is_filament_unloading = True
+            self.predicted_material == ""
             self._logger.info("Filament is being unloaded.")
 
         else:
@@ -170,15 +172,14 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                             if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
                                 self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
                                 self.count_settings += 1
-                                gcode_commands = ["M400"]+ filament.generate_gcode()
+                                gcode_commands = filament.generate_gcode()
                                 self._printer.commands(gcode_commands, force=True)
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                                 self.last_temp_change_time = current_time  # Store last update time
                     else:
                         self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.") 
             else:
-                return line            
-            
+                return line                
         self.waiting_for_final_temp = True    
 
         return line
