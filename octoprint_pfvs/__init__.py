@@ -92,6 +92,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 self._logger.info("Print is officially starting.")
                 self.print_starting = True
                 self._printer.pause_print()
+                # run scan to get plastic type
+                
             else:
                 self.print_start = False
                 
@@ -140,7 +142,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             if target_temp != 170.0 and target_temp != 0.0:  # This means it switched to the final temp
                 if target_temp * 0.99 <= current_temp:
                     self._logger.debug("Current Temp: ", current_temp)
-                    self._logger.debug("Target Temp * 0.85: ", target_temp * 0.85)
+                    self._logger.debug("Target Temp * 0.99: ", target_temp * 0.99)
                     self.filament_scan()
                     self.filament_scan()
                     self._logger.info(f"Predicted material: {self.predicted_material}")  
