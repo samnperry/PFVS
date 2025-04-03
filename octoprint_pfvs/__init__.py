@@ -137,7 +137,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             current_temp = float(match.group(1))
             target_temp = float(match.group(2))
 
-            if target_temp != 170.0 or target_temp != 0.0:  # This means it switched to the final temp
+            if target_temp != 170.0 and target_temp != 0.0:  # This means it switched to the final temp
                 if target_temp * 0.99 <= current_temp:
                     self._logger.debug("Current Temp: ", current_temp)
                     self._logger.debug("Target Temp * 0.85: ", target_temp * 0.85)
