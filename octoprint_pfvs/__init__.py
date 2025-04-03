@@ -138,7 +138,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
             if target_temp != 170.0 or target_temp != 0.0:  # This means it switched to the final temp
                 if target_temp * 0.99 <= current_temp:
-                    self._printer.pause_print()
                     self._logger.debug("Current Temp: ", current_temp)
                     self._logger.debug("Target Temp * 0.85: ", target_temp * 0.85)
                     self.filament_scan()
@@ -156,7 +155,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                         self._printer.cancel_print()
                         return line
                     
-                    if self.predicted_material == "PETG":
+                    if self.predicted_material == "PET":
                         self.count_petg += 1
                         self.count_stops += 1
                         self._logger.info(f"Cannot print PETG on Prusa Mini")
@@ -168,17 +167,16 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                         self.count_pla += 1
                         filament = FILAMENTS[self.predicted_material]
                         current_time = time.time()
-                        if (not hasattr(self, "last_temp_change_time")) or (current_time - self.last_temp_change_time > 10):
+                        if (current_time - self.last_temp_change_time > 10):
                             if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
                                 self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
                                 self.count_settings += 1
-                                gcode_commands = ["M400"] + filament.generate_gcode()
-                                self._printer.commands(gcode_commands, force=True)
+                                gcode_commands = ["M400"]+ filament.generate_gcode()
+                                self._printer.commands(gcode_commands, True)
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                                 self.last_temp_change_time = current_time  # Store last update time
                     else:
-                        self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
-                    self._printer.resume_print()    
+                        self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.") 
             else:
                 return line            
             
