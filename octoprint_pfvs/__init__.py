@@ -91,6 +91,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             if new_state == "STARTING":
                 self._logger.info("Print is officially starting.")
                 self.print_starting = True
+                self._printer.pause_print()
             else:
                 self.print_start = False
                 
@@ -128,7 +129,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_loading = False
             self.is_filament_unloading = False
             
-        if self.print_starting:    
+        if self.print_starting:     
             match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)
             if not match:
                 return line  # Skip if no match
