@@ -190,8 +190,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 else:
                     self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
             
-            self._logger.info("Temperature adjusted. Resuming print.")    
-            self._printer.resume_print()
+                self._logger.info("Temperature adjusted. Resuming print.")    
+                self._printer.resume_print()
             
         self.waiting_for_final_temp = True    
 
