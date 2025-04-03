@@ -143,7 +143,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 else:
                     return line  # Still in probing phase
             
-            if current_temp * 0.90 <= target_temp:
+            if target_temp * 0.85 >= current_temp:
                 self.filament_scan()
                 self.filament_scan()
                 self._logger.info(f"Predicted material: {self.predicted_material}")  
