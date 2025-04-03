@@ -30,7 +30,13 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.spectrometer_thread = None
         self.spectrometer_running = False 
         self.waiting_for_final_temp = True
+        self.last_temp_change_time = 0
         self.predicted_material = ""
+        self.count_pla = 0
+        self.count_asa = 0
+        self.count_petg = 0
+        self.count_settings = 0
+        self.count_stops = 0
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
@@ -138,24 +144,36 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             if current_temp * 0.95 >= target_temp:
                 self._printer.pause_print()
                 self.filament_scan()
+                self.filament_scan()
                 self._logger.info(f"Predicted material: {self.predicted_material}")  
                 self._plugin_manager.send_plugin_message(
                     self._identifier, 
                     {"predicted_material": self.predicted_material}
                 )
 
-                if self.predicted_material == "ASA" or self.predicted_material == "PET":
+                if self.predicted_material == "ASA":
+                    self.count_asa += 1
+                    self.count_stops += 1
                     self._logger.info(f"Cannot print ASA on Prusa Mini")
+                    self._printer.cancel_print()
+                    return line
+                
+                if self.predicted_material == "PETG":
+                    self.count_petg += 1
+                    self.count_stops += 1
+                    self._logger.info(f"Cannot print PETG on Prusa Mini")
                     self._printer.cancel_print()
                     return line
 
                 # Adjust settings if the detected filament doesn't match target temp
-                if self.predicted_material in FILAMENTS:
+                if self.predicted_material in FILAMENTS and self.predicted_material == "PLA":
+                    self.count_pla += 1
                     filament = FILAMENTS[self.predicted_material]
                     current_time = time.time()
                     if (not hasattr(self, "last_temp_change_time")) or (current_time - self.last_temp_change_time > 10):
                         if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
                             self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
+                            self.count_settings += 1
                             gcode_commands = filament.generate_gcode()
                             self._printer.commands(["M400"] + gcode_commands)
                             self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
@@ -177,6 +195,22 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         return GPIO.input(11) == GPIO.LOW
+    
+    
+    def log_filament_data(self):
+        """Logs filament verification data to a file."""
+        try:
+            log_file = os.path.join(self.get_plugin_data_folder(), "statistics_log.txt")
+            with open(log_file, "a") as f:
+                f.write(f"Times Predicted PLA: {self.count_pla}\n")
+                f.write(f"Times Predicted ASA: {self.count_asa}\n")
+                f.write(f"Times Predicted PETG: {self.count_petg}\n")
+                f.write(f"Times Settings Changed: {self.count_settings}\n")
+                f.write(f"Number of Print Stopped: {self.count_stops}\n")
+                f.write("-" * 40 + "\n")
+            self._logger.info("Filament data logged successfully.")
+        except Exception as e:
+            self._logger.error(f"Error writing to file: {e}")
 
     def filament_scan(self):
         try:
