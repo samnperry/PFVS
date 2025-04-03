@@ -91,7 +91,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             if new_state == "STARTING":
                 self._logger.info("Print is officially starting.")
                 self.print_starting = True
-                self._printer.pause_print()
+                temps = self._printer.get_current_temperatures()
+                self._logger.info("Curret Temp in State: ", temps)
                 # run scan to get plastic type
                 
             else:
