@@ -172,7 +172,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                                 self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
                                 self.count_settings += 1
                                 gcode_commands = ["M400"]+ filament.generate_gcode()
-                                self._printer.commands(gcode_commands, True)
+                                self._printer.commands(gcode_commands, force=True)
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                                 self.last_temp_change_time = current_time  # Store last update time
                     else:
