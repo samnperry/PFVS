@@ -136,53 +136,49 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             current_temp = float(match.group(1))
             target_temp = float(match.group(2))
 
-            # If we're still in probing phase, ignore temperatures
-            if self.waiting_for_final_temp:
-                if target_temp != 170.0 or target_temp != 0.0:  # This means it switched to the final temp
-                    self.waiting_for_final_temp = False  # Now we can proceed
-                else:
-                    return line  # Still in probing phase
-            
-            if target_temp * 0.85 >= current_temp:
-                self._logger.debug("Current Temp: ", current_temp)
-                self._logger.debug("Target Temp * 0.85: ", target_temp * 0.85)
-                self.filament_scan()
-                self.filament_scan()
-                self._logger.info(f"Predicted material: {self.predicted_material}")  
-                self._plugin_manager.send_plugin_message(
-                    self._identifier, 
-                    {"predicted_material": self.predicted_material}
-                )
+            if target_temp != 170.0 or target_temp != 0.0:  # This means it switched to the final temp
+                if target_temp * 0.85 <= current_temp:
+                    self._logger.debug("Current Temp: ", current_temp)
+                    self._logger.debug("Target Temp * 0.85: ", target_temp * 0.85)
+                    self.filament_scan()
+                    self.filament_scan()
+                    self._logger.info(f"Predicted material: {self.predicted_material}")  
+                    self._plugin_manager.send_plugin_message(
+                        self._identifier, 
+                        {"predicted_material": self.predicted_material}
+                    )
 
-                if self.predicted_material == "ASA":
-                    self.count_asa += 1
-                    self.count_stops += 1
-                    self._logger.info(f"Cannot print ASA on Prusa Mini")
-                    self._printer.cancel_print()
-                    return line
-                
-                if self.predicted_material == "PETG":
-                    self.count_petg += 1
-                    self.count_stops += 1
-                    self._logger.info(f"Cannot print PETG on Prusa Mini")
-                    self._printer.cancel_print()
-                    return line
+                    if self.predicted_material == "ASA":
+                        self.count_asa += 1
+                        self.count_stops += 1
+                        self._logger.info(f"Cannot print ASA on Prusa Mini")
+                        self._printer.cancel_print()
+                        return line
+                    
+                    if self.predicted_material == "PETG":
+                        self.count_petg += 1
+                        self.count_stops += 1
+                        self._logger.info(f"Cannot print PETG on Prusa Mini")
+                        self._printer.cancel_print()
+                        return line
 
-                # Adjust settings if the detected filament doesn't match target temp
-                if self.predicted_material in FILAMENTS and self.predicted_material == "PLA":
-                    self.count_pla += 1
-                    filament = FILAMENTS[self.predicted_material]
-                    current_time = time.time()
-                    if (not hasattr(self, "last_temp_change_time")) or (current_time - self.last_temp_change_time > 10):
-                        if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
-                            self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
-                            self.count_settings += 1
-                            gcode_commands = ["M400"] + filament.generate_gcode()
-                            self._printer.commands(gcode_commands, force=True)
-                            self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
-                            self.last_temp_change_time = current_time  # Store last update time
-                else:
-                    self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
+                    # Adjust settings if the detected filament doesn't match target temp
+                    if self.predicted_material in FILAMENTS and self.predicted_material == "PLA":
+                        self.count_pla += 1
+                        filament = FILAMENTS[self.predicted_material]
+                        current_time = time.time()
+                        if (not hasattr(self, "last_temp_change_time")) or (current_time - self.last_temp_change_time > 10):
+                            if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
+                                self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
+                                self.count_settings += 1
+                                gcode_commands = ["M400"] + filament.generate_gcode()
+                                self._printer.commands(gcode_commands, force=True)
+                                self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
+                                self.last_temp_change_time = current_time  # Store last update time
+                    else:
+                        self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.")
+            else:
+                return line            
             
         self.waiting_for_final_temp = True    
 
@@ -222,7 +218,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             spect.shutterLED("AS72653", False)
             time.sleep(0.18)
             dark_spect_data = spect.readRAW()
-            self._logger.info(f"Raw Dark Spectrometer Data: {dark_spect_data}")
             time.sleep(1.0)  
 
             spect.shutterLED("AS72651", True)
@@ -240,10 +235,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             for i in range(len(light_spect_data)):
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
                 
-                # Finally, pass the spectrometer data to the prediction function
-            self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
             self.predicted_material = predict_material(light_spect_data, 'R')
-            self._logger.info(f"Predicted material: {self.predicted_material}") 
             time.sleep(1)  # Adjust sampling rate
         except Exception as e:
             self._logger.error(f"Error reading spectrometer data: {e}")
