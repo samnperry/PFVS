@@ -44,7 +44,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self._logger.info("PFVS Plugin initialized.")
         try:
             spect.init()
-            lcd = CharLCD(i2c_expander='PCF8574', address=0x27, port=1, cols=16, rows=2)
+            self.lcd = CharLCD(i2c_expander='PCF8574', address=0x27, port=1, cols=16, rows=2)
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
             self._logger.error(f"Failed to initialize spectrometer: {e}")
@@ -207,7 +207,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        return GPIO.input(11) == GPIO.LOW
+        return GPIO.input(11) == GPIO.HIGH
     
     
     def log_filament_data(self):
