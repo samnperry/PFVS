@@ -38,13 +38,12 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.count_petg = 0
         self.count_settings = 0
         self.count_stops = 0
-        self.lcd = None
+        self.lcd = CharLCD(i2c_expander='PCF8574', address=0x27, port=1, cols=16, rows=2)
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
         try:
             spect.init()
-            self.lcd = CharLCD(i2c_expander='PCF8574', address=0x27, port=1, cols=16, rows=2)
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
             self._logger.error(f"Failed to initialize spectrometer: {e}")
