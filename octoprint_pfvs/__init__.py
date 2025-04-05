@@ -265,12 +265,11 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         if not self.is_filament_detected():
             self._logger.warning("No filament detected. Spectrometer will not start.")
             return
-        
-        # Add if statement to see if there is filament detected first before running a scan
-        self.spectrometer_running = True
-        self.spectrometer_thread = threading.Thread(target=self.read_spectrometer_data, daemon=True)
-        self.spectrometer_thread.start()
-        self._logger.info("Spectrometer data collection started.")
+        else: 
+            self.spectrometer_running = True
+            self.spectrometer_thread = threading.Thread(target=self.read_spectrometer_data, daemon=True)
+            self.spectrometer_thread.start()
+            self._logger.info("Spectrometer data collection started.")
 
     def stop_spectrometer(self):
         """Stops the spectrometer thread."""
