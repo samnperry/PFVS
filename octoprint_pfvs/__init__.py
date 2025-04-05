@@ -107,21 +107,21 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     def process_gcode(self, comm, line, *args, **kwargs):
         """ Processes received G-code and handles filament verification & temperature adjustments """
 
-        if "M701" in line:  # Filament load command detected
-            self.is_filament_loading = True
-            self.is_filament_unloading = False
-            self._logger.info("Filament is being loaded.") # Check if filament is present
+        # if "M701" in line:  # Filament load command detected
+            # self.is_filament_loading = True
+            # self.is_filament_unloading = False
+            # self._logger.info("Filament is being loaded.") # Check if filament is present
                 # Run spectrometer scan
-            self.filament_scan()
-            self.filament_scan()
-            self._logger.info("Filament is loaded and scan happened")
-            self._logger.info(f"Predicted material: {self.predicted_material}") 
-            self._plugin_manager.send_plugin_message(
-                self._identifier, 
-                {"predicted_material": self.predicted_material}
-            )
+            # self.filament_scan()
+            # self.filament_scan()
+            # self._logger.info("Filament is loaded and scan happened")
+            # self._logger.info(f"Predicted material: {self.predicted_material}") 
+            # self._plugin_manager.send_plugin_message(
+                # self._identifier, 
+                # {"predicted_material": self.predicted_material}
+            # )
 
-        elif "M702" in line:  # Filament unload command detected
+        if "M702" in line:  # Filament unload command detected
             self.is_filament_loading = False
             self.is_filament_unloading = True
             self.predicted_material == ""
@@ -172,9 +172,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                             if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
                                 self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
                                 self.count_settings += 1
-                                self._printer.commands(["M25"], force=True)
                                 gcode_commands = filament.generate_gcode()
-                                self._printer.commands(gcode_commands, force=True)
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                                 self._logger.info("Waiting for temperature adjustment to complete...")
                                 time.sleep(10)
