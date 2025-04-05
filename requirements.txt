@@ -13,3 +13,4 @@ octoprint
 flask
 RPi.GPIO
 scikit-learn
+RPLCD

@@ -10,6 +10,7 @@ import math
 import numpy as np
 from flask import jsonify
 import RPi.GPIO as GPIO
+from RPLCD.i2c import CharLCD
 from octoprint_pfvs import spectrometer as spect
 from octoprint_pfvs.filament_gcodes import FILAMENTS
 from octoprint_pfvs.predict_material import predict_material
@@ -37,11 +38,13 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.count_petg = 0
         self.count_settings = 0
         self.count_stops = 0
+        self.lcd = None
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
         try:
             spect.init()
+            lcd = CharLCD(i2c_expander='PCF8574', address=0x27, port=1, cols=16, rows=2)
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
             self._logger.error(f"Failed to initialize spectrometer: {e}")
@@ -107,25 +110,29 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     def process_gcode(self, comm, line, *args, **kwargs):
         """ Processes received G-code and handles filament verification & temperature adjustments """
 
-        # if "M701" in line:  # Filament load command detected
-            # self.is_filament_loading = True
-            # self.is_filament_unloading = False
-            # self._logger.info("Filament is being loaded.") # Check if filament is present
-                # Run spectrometer scan
-            # self.filament_scan()
-            # self.filament_scan()
-            # self._logger.info("Filament is loaded and scan happened")
-            # self._logger.info(f"Predicted material: {self.predicted_material}") 
-            # self._plugin_manager.send_plugin_message(
-                # self._identifier, 
-                # {"predicted_material": self.predicted_material}
-            # )
+        if "M701" in line:  # Filament load command detected
+            self.is_filament_loading = True
+            self.is_filament_unloading = False
+            self._logger.info("Filament is being loaded.") # Check if filament is present
+            self.lcd.write_string(self.predicted_material)
+            # Run spectrometer scan
+            self.filament_scan()
+            self.filament_scan()
+            self._logger.info("Filament is loaded and scan happened")
+            self._logger.info(f"Predicted material: {self.predicted_material}") 
+            self._plugin_manager.send_plugin_message(
+                self._identifier, 
+                {"predicted_material": self.predicted_material}
+            )
+            self.lcd.clear()
+            self.lcd.write_string(self.predicted_material)
 
         if "M702" in line:  # Filament unload command detected
             self.is_filament_loading = False
             self.is_filament_unloading = True
             self.predicted_material == ""
             self._logger.info("Filament is being unloaded.")
+            self.lcd.write_string("Filament is being unloaded.")
 
         else:
             self.is_filament_loading = False
@@ -148,18 +155,24 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                             self._identifier, 
                             {"predicted_material": self.predicted_material}
                         )
+                        self.lcd.clear()
+                        self.lcd.write_string(self.predicted_material)
                 if target_temp * 0.99 <= current_temp:
                     if self.predicted_material == "ASA":
                         self.count_asa += 1
                         self.count_stops += 1
-                        self._logger.info(f"Cannot print ASA on Prusa Mini")
+                        self._logger.info("Cannot print ASA on Prusa Mini")
+                        self.lcd.clear()
+                        self.lcd.write_string("Cannot print ASA on Prusa Mini")
                         self._printer.cancel_print()
                         return line
                     
                     if self.predicted_material == "PET":
                         self.count_petg += 1
                         self.count_stops += 1
-                        self._logger.info(f"Cannot print PETG on Prusa Mini")
+                        self._logger.info("Cannot print PETG on Prusa Mini")
+                        self.lcd.clear()
+                        self.lcd.write_string("Cannot print PETG on Prusa Mini")
                         self._printer.cancel_print()
                         return line
 
@@ -172,12 +185,13 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                             if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
                                 self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
                                 self.count_settings += 1
+                                self.lcd.clear()
+                                self.lcd.write_string("Incorrect target temperature detected")
                                 gcode_commands = filament.generate_gcode()
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
-                                self._logger.info("Waiting for temperature adjustment to complete...")
-                                time.sleep(10)
-                                self._printer.commands(["M24"], force=True)
                                 self.last_temp_change_time = current_time  # Store last update time
+                                self.lcd.clear()
+                                self.lcd.write_string("Updated settings")
                     else:
                         self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.") 
             else:
