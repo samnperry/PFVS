@@ -39,11 +39,15 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.count_settings = 0
         self.count_stops = 0
         self.lcd = CharLCD(i2c_expander='PCF8574', address=0x27, port=1, cols=16, rows=2)
+        self.manual_override = False
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
         try:
             spect.init()
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BOARD)
+            GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
             self._logger.error(f"Failed to initialize spectrometer: {e}")
@@ -108,6 +112,10 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def process_gcode(self, comm, line, *args, **kwargs):
         """ Processes received G-code and handles filament verification & temperature adjustments """
+        
+        if (GPIO.input(13) == GPIO.HIGH):
+            self.manual_override = True
+            self.lcd.write_string("Override Mode")
 
         if "M701" in line:  # Filament load command detected
             self.is_filament_loading = True
@@ -137,7 +145,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_loading = False
             self.is_filament_unloading = False
             
-        if self.print_starting:     
+        if self.print_starting and not self.manual_override:     
             match = re.search(r'(\d+\.?\d*)/(\d+\.?\d*)', line)
             if not match:
                 return line  # Skip if no match
@@ -195,7 +203,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                         self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.") 
             else:
                 return line                
-        self.waiting_for_final_temp = True    
+        self.waiting_for_final_temp = True 
+        self.manual_override = False   
 
         return line
 
@@ -206,8 +215,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        return GPIO.input(11) == GPIO.HIGH
-    
+        return GPIO.input(11) == GPIO.HIGH    
     
     def log_filament_data(self):
         """Logs filament verification data to a file."""
