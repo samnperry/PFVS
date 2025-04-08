@@ -14,3 +14,4 @@ flask
 RPi.GPIO
 scikit-learn
 RPLCD
+adafruit-circuitpython-tcs34725

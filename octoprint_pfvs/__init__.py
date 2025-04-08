@@ -11,6 +11,9 @@ import numpy as np
 from flask import jsonify
 import RPi.GPIO as GPIO
 from RPLCD.i2c import CharLCD
+import board
+import adafruit_tcs34725
+import busio
 from octoprint_pfvs import spectrometer as spect
 from octoprint_pfvs.filament_gcodes import FILAMENTS
 from octoprint_pfvs.predict_material import predict_material
@@ -40,6 +43,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.count_stops = 0
         self.lcd = CharLCD(i2c_expander='PCF8574', address=0x27, port=1, cols=16, rows=2)
         self.manual_override = False
+        self.i2c = busio.I2C(board.SCL, board.SDA)
+        self.color_sensor = adafruit_tcs34725.TCS34725(self.i2c)
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
@@ -48,6 +53,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             GPIO.setwarnings(False)
             GPIO.setmode(GPIO.BOARD)
             GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+            self.color_sensor.integration_time = 175  # optional tuning
+            self.color_sensor.gain = 60 
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
             self._logger.error(f"Failed to initialize spectrometer: {e}")
@@ -257,11 +264,43 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
             for i in range(len(light_spect_data)):
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
+                    
+            self.color_sensor.led = True
+            rgb = self.color_sensor.color_rgb_bytes  # (R, G, B)
+            color_code = self.classify_color(rgb)
+            self.color_sensor.led = False 
+            
+            self._plugin_manager.send_plugin_message(
+                self._identifier, 
+                {"rgb": rgb, "predicted_color": color_code}
+            )       
                 
-            self.predicted_material = predict_material(light_spect_data, 'R')
+            self.predicted_material = predict_material(light_spect_data, color_code)
             time.sleep(1)  # Adjust sampling rate
         except Exception as e:
             self._logger.error(f"Error reading spectrometer data: {e}")
+     
+    def classify_color(self, rgb):
+        r, g, b = rgb
+        # Normalize the RGB values to simplify comparison
+        total = r + g + b if r + g + b > 0 else 1
+        r_norm = r / total
+        g_norm = g / total
+        b_norm = b / total
+
+        if r_norm > 0.5 and g_norm < 0.3 and b_norm < 0.3:
+            return 'R'  # Red
+        elif g_norm > 0.5 and r_norm < 0.3 and b_norm < 0.3:
+            return 'G'  # Green
+        elif b_norm > 0.5 and r_norm < 0.3 and g_norm < 0.3:
+            return 'B'  # Blue
+        elif r > 200 and g > 200 and b > 200:
+            return 'W'  # White
+        elif r < 50 and g < 50 and b < 50:
+            return 'K'  # Black
+        else:
+            return 'U'  # Unknown
+
             
     def start_spectrometer(self):
         """Starts a separate thread for reading spectrometer data."""
