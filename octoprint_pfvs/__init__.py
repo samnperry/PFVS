@@ -51,6 +51,17 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
+        
+        try:
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BOARD)  # Only call this ONCE
+            GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Manual override pin
+            GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Filament detection pin
+            self.GPIO_setup = True
+            self._logger.info("GPIO setup completed.")
+        except Exception as e:
+            self._logger.error(f"GPIO setup failed: {e}")
+        
         try:
             spect.init()
             self._logger.info("Spectrometer initialized successfully.")
@@ -117,12 +128,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def process_gcode(self, comm, line, *args, **kwargs):
         """ Processes received G-code and handles filament verification & temperature adjustments """
-        if not self.GPIO_setup:
-            GPIO.setwarnings(False)
-            GPIO.setmode(GPIO.BOARD)
-            GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-            self.GPIO_setup = True
-            
+       
         if (GPIO.input(13) == GPIO.HIGH):
             self.manual_override = True
             self._logger.info("Override Mode")
@@ -222,7 +228,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ Spectrometer Handling
     def is_filament_detected(self):
         """Returns True if the IR sensor detects filament."""
-        GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         return GPIO.input(11) == GPIO.HIGH    
     
     def log_filament_data(self):
