@@ -166,15 +166,14 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                     if self.predicted_material in FILAMENTS and self.predicted_material == "PLA":
                         self.count_pla += 1
                         filament = FILAMENTS[self.predicted_material]
-                        current_time = time.time()
-                        if (current_time - self.last_temp_change_time > 10):
+                        if (self.last_temp_change_time == 0):
                             if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
                                 self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
                                 self.count_settings += 1
                                 gcode_commands = filament.generate_gcode()
                                 self._printer.commands(gcode_commands, force=True)
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
-                                self.last_temp_change_time = current_time  # Store last update time
+                                self.last_temp_change_time = 1
                     else:
                         self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.") 
             else:
