@@ -45,16 +45,16 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.manual_override = False
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.color_sensor = adafruit_tcs34725.TCS34725(self.i2c)
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        self.color_sensor.integration_time = 175
+        self.color_sensor.gain = 60 
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
         try:
             spect.init()
-            GPIO.setwarnings(False)
-            GPIO.setmode(GPIO.BOARD)
-            GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-            self.color_sensor.integration_time = 175
-            self.color_sensor.gain = 60 
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
             self._logger.error(f"Failed to initialize spectrometer: {e}")
