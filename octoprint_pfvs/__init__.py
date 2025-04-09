@@ -46,6 +46,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.color_sensor = adafruit_tcs34725.TCS34725(self.i2c)
         GPIO.setwarnings(False)
+        GPIO.cleanup()
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         self.color_sensor.integration_time = 175
