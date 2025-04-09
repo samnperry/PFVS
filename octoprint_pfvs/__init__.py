@@ -47,15 +47,12 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.color_sensor = adafruit_tcs34725.TCS34725(self.i2c)
         self.color_sensor.integration_time = 175
         self.color_sensor.gain = 60 
+        self.GPIO_setup = False
 
     def on_after_startup(self):
         self._logger.info("PFVS Plugin initialized.")
         try:
             spect.init()
-            GPIO.setwarnings(False)
-            GPIO.cleanup()
-            GPIO.setmode(GPIO.BOARD)
-            GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
             self._logger.error(f"Failed to initialize spectrometer: {e}")
@@ -120,7 +117,12 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def process_gcode(self, comm, line, *args, **kwargs):
         """ Processes received G-code and handles filament verification & temperature adjustments """
-        
+        if not self.GPIO_setup:
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BOARD)
+            GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+            self.GPIO_setup = True
+            
         if (GPIO.input(13) == GPIO.HIGH):
             self.manual_override = True
             self._logger.info("Override Mode")
@@ -220,8 +222,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ Spectrometer Handling
     def is_filament_detected(self):
         """Returns True if the IR sensor detects filament."""
-        GPIO.setwarnings(False)
-        # GPIO.setmode(GPIO.BOARD)
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         return GPIO.input(11) == GPIO.HIGH    
     
