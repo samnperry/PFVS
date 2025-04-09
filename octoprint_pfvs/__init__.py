@@ -53,7 +53,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             GPIO.setwarnings(False)
             GPIO.setmode(GPIO.BOARD)
             GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-            self.color_sensor.integration_time = 175  # optional tuning
+            self.color_sensor.integration_time = 175
             self.color_sensor.gain = 60 
             self._logger.info("Spectrometer initialized successfully.")
         except Exception as e:
@@ -122,6 +122,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         
         if (GPIO.input(13) == GPIO.HIGH):
             self.manual_override = True
+            self._logger.info("Override Mode")
             self.lcd.write_string("Override Mode")
 
         if "M701" in line:  # Filament load command detected
@@ -203,7 +204,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                                 gcode_commands = filament.generate_gcode()
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                                 self.last_temp_change_time = 1
-                                self.last_temp_change_time = current_time  # Store last update time
                                 self.lcd.clear()
                                 self.lcd.write_string("Updated settings")
                     else:
@@ -265,10 +265,9 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             for i in range(len(light_spect_data)):
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
                     
-            self.color_sensor.led = True
-            rgb = self.color_sensor.color_rgb_bytes  # (R, G, B)
-            color_code = self.classify_color(rgb)
-            self.color_sensor.led = False 
+            r, g, b, c = self.color_sensor.color_raw  # (R, G, B)
+            rgb = (r, g, b)
+            color_code = self.classify_color(rgb, c)
             
             self._plugin_manager.send_plugin_message(
                 self._identifier, 
@@ -280,26 +279,29 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         except Exception as e:
             self._logger.error(f"Error reading spectrometer data: {e}")
      
-    def classify_color(self, rgb):
+    def classify_color(self, rgb, c):
         r, g, b = rgb
-        # Normalize the RGB values to simplify comparison
         total = r + g + b if r + g + b > 0 else 1
         r_norm = r / total
         g_norm = g / total
         b_norm = b / total
 
+        if c < 30:
+            return 'K'  # Very low light, likely black
+
         if r_norm > 0.5 and g_norm < 0.3 and b_norm < 0.3:
-            return 'R'  # Red
+            return 'R'
         elif g_norm > 0.5 and r_norm < 0.3 and b_norm < 0.3:
-            return 'G'  # Green
+            return 'G'
         elif b_norm > 0.5 and r_norm < 0.3 and g_norm < 0.3:
-            return 'B'  # Blue
-        elif r > 200 and g > 200 and b > 200:
-            return 'W'  # White
+            return 'B'
+        elif r > 200 and g > 200 and b > 200 and c > 400:
+            return 'W'
         elif r < 50 and g < 50 and b < 50:
-            return 'K'  # Black
+            return 'K'
         else:
-            return 'U'  # Unknown
+            return 'U'
+
 
             
     def start_spectrometer(self):
@@ -349,15 +351,20 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 for i in range(len(light_spect_data)):
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
                 
+                r, g, b, c = self.color_sensor.color_raw  # (R, G, B)
+                rgb = (r, g, b)
+                color_code = self.classify_color(rgb, c)    
+                
                 # Finally, pass the spectrometer data to the prediction function
                 self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
-                predicted_material = predict_material(light_spect_data, 'R')
-                self._logger.info(f"Predicted material: {predicted_material}")
+                self._logger.info(f"Color: {color_code}")
+                # predicted_material = predict_material(light_spect_data, color_code)
+                # self._logger.info(f"Predicted material: {predicted_material}")
 
                 # Send data to web UI
                 self._plugin_manager.send_plugin_message(
                     self._identifier, 
-                    {"spectrometer_data": light_spect_data, "predicted_material": predicted_material}
+                    {"spectrometer_data": light_spect_data, "rgb": rgb,}
                 )
                 
                 time.sleep(1)  # Adjust sampling rate
