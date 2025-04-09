@@ -49,25 +49,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.color_sensor.gain = 60 
         self.GPIO_setup = False
 
-    def on_after_startup(self):
-        self._logger.info("PFVS Plugin initialized.")
-        
-        try:
-            GPIO.setwarnings(False)
-            GPIO.setmode(GPIO.BOARD)  # Only call this ONCE
-            GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Manual override pin
-            GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Filament detection pin
-            self.GPIO_setup = True
-            self._logger.info("GPIO setup completed.")
-        except Exception as e:
-            self._logger.error(f"GPIO setup failed: {e}")
-        
-        try:
-            spect.init()
-            self._logger.info("Spectrometer initialized successfully.")
-        except Exception as e:
-            self._logger.error(f"Failed to initialize spectrometer: {e}")
-
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
@@ -106,7 +87,24 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     def on_event(self, event, payload):
         self._logger.info(f"Event received: {event}")
         
-        if event == "PrinterStateChanged":
+        if event == "Startup":
+            self._logger.info("PFVS Plugin initialized.")
+            try:
+                GPIO.setwarnings(False)
+                GPIO.setmode(GPIO.BOARD)  # Only call this ONCE
+                GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Manual override pin
+                GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Filament detection pin
+                self.GPIO_setup = True
+                self._logger.info("GPIO setup completed.")
+            except Exception as e:
+                self._logger.error(f"GPIO setup failed: {e}")
+            
+            try:
+                spect.init()
+                self._logger.info("Spectrometer initialized successfully.")
+            except Exception as e:
+                self._logger.error(f"Failed to initialize spectrometer: {e}") 
+        elif event == "PrinterStateChanged":
             new_state = payload.get("state_id")
             self._logger.info(f"New printer state: {new_state}")
 
@@ -116,14 +114,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 
             else:
                 self.print_start = False
-                
-
-    def delayed_resume_print(self):
-        time.sleep(30)
-        self._printer.resume_print()
-        self.print_paused = False  
-        self._logger.info("Resuming print after 30-second pause.")
-
+               
     ##~~ G-code received hook
 
     def process_gcode(self, comm, line, *args, **kwargs):
