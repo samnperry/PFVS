@@ -49,6 +49,9 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self.color_sensor.gain = 60 
         self.GPIO_setup = False
 
+    def on_shutdown(self):
+        GPIO.cleanup()
+    
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
@@ -91,9 +94,10 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self._logger.info("PFVS Plugin initialized.")
             try:
                 GPIO.setwarnings(False)
-                GPIO.setmode(GPIO.BOARD)  # Only call this ONCE
+                if GPIO.getmode() is None:
+                    GPIO.setmode(GPIO.BOARD)  # Only call this if not already set
                 GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Manual override pin
-                GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Filament detection pin
+                GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
                 self.GPIO_setup = True
                 self._logger.info("GPIO setup completed.")
             except Exception as e:
