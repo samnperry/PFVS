@@ -96,6 +96,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 GPIO.setwarnings(False)
                 if GPIO.getmode() is None:
                     GPIO.setmode(GPIO.BOARD)  # Only call this if not already set
+                    self._logger.info("GPIO setup to Board")
                 GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Manual override pin
                 GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
                 self.GPIO_setup = True
@@ -224,7 +225,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ Spectrometer Handling
     def is_filament_detected(self):
         """Returns True if the IR sensor detects filament."""
-        return GPIO.input(11) == GPIO.HIGH    
+        return GPIO.input(11) == GPIO.LOW    
     
     def log_filament_data(self):
         """Logs filament verification data to a file."""
