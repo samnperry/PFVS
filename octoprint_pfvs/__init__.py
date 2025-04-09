@@ -128,11 +128,12 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
     def process_gcode(self, comm, line, *args, **kwargs):
         """ Processes received G-code and handles filament verification & temperature adjustments """
-       
-        if (GPIO.input(13) == GPIO.HIGH):
-            self.manual_override = True
-            self._logger.info("Override Mode")
-            self.lcd.write_string("Override Mode")
+        
+        if self.GPIO_setup:
+            if (GPIO.input(13) == GPIO.HIGH):
+                self.manual_override = True
+                self._logger.info("Override Mode")
+                self.lcd.write_string("Override Mode")
 
         if "M701" in line:  # Filament load command detected
             self.is_filament_loading = True
