@@ -221,7 +221,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     def is_filament_detected(self):
         """Returns True if the IR sensor detects filament."""
         GPIO.setwarnings(False)
-        GPIO.setmode(GPIO.BOARD)
+        # GPIO.setmode(GPIO.BOARD)
         GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         return GPIO.input(11) == GPIO.HIGH    
     
