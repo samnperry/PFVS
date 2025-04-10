@@ -117,6 +117,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 self._logger.info("Print is officially starting.")
                 self.print_starting = True
                 self.last_temp_change_time = 0
+                self.waiting_for_final_temp = True 
+                self.manual_override = False
                 
             else:
                 self.print_start = False
@@ -209,6 +211,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                                 self.lcd.clear()
                                 self.lcd.write_string("Incorrect target temperature detected")
                                 gcode_commands = filament.generate_gcode()
+                                self._printer.commands(gcode_commands, force=True)
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                                 self.last_temp_change_time = 1
                                 self.lcd.clear()
@@ -216,9 +219,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                     else:
                         self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.") 
             else:
-                return line                
-        self.waiting_for_final_temp = True 
-        self.manual_override = False   
+                return line                  
 
         return line
 
