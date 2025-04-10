@@ -116,6 +116,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             if new_state == "STARTING":
                 self._logger.info("Print is officially starting.")
                 self.print_starting = True
+                self.last_temp_change_time = 0
                 
             else:
                 self.print_start = False
