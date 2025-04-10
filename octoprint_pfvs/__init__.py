@@ -187,8 +187,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                     if self.predicted_material in FILAMENTS and self.predicted_material == "PLA":
                         self.count_pla += 1
                         filament = FILAMENTS[self.predicted_material]
-                        current_time = time.time()
-                        if (current_time - self.last_temp_change_time > 10):
+                        if (self.last_temp_change_time == 0):
                             if not math.isclose(target_temp, filament.print_temp, rel_tol=1e-2):  
                                 self._logger.info(f"Incorrect target temperature detected: {target_temp}°C. Changing to {filament.print_temp}°C.")
                                 self.count_settings += 1
@@ -196,7 +195,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                                 self.lcd.write_string("Incorrect target temperature detected")
                                 gcode_commands = filament.generate_gcode()
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
-                                self.last_temp_change_time = current_time  # Store last update time
+                                self.last_temp_change_time = 1
                                 self.lcd.clear()
                                 self.lcd.write_string("Updated settings")
                     else:
