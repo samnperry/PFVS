@@ -268,16 +268,16 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             for i in range(len(light_spect_data)):
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
                     
-            r, g, b, c = self.color_sensor.color_raw  # (R, G, B)
-            rgb = (r, g, b)
-            color_code = self.classify_color(rgb, c)
+            # r, g, b, c = self.color_sensor.color_raw  # (R, G, B)
+            # rgb = (r, g, b)
+            # color_code = self.classify_color(rgb, c)
             
-            self._plugin_manager.send_plugin_message(
-                self._identifier, 
-                {"rgb": rgb, "predicted_color": color_code}
-            )       
+            # self._plugin_manager.send_plugin_message(
+                # self._identifier, 
+                # {"rgb": rgb, "predicted_color": color_code}
+            # )       
                 
-            self.predicted_material = predict_material(light_spect_data, color_code)
+            self.predicted_material = predict_material(light_spect_data, 'W')
             time.sleep(1)  # Adjust sampling rate
         except Exception as e:
             self._logger.error(f"Error reading spectrometer data: {e}")
