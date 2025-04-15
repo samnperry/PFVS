@@ -13,19 +13,22 @@ $(function() {
         self.predictedMaterial = ko.observable("");
         self.filamentType = ko.observable("");
         self.filamentColor = ko.observable("");
+        self.filamentLoop = ko.observable("");
 
         self.saveFilamentMetadata = function() {
             const type = self.filamentType().trim();
             const color = self.filamentColor().trim();
+            const loop = int(self.filamentLoop().trim());
 
-            if (!type || !color) {
-                alert("Please enter both filament type and color.");
+            if (!type || !color || !loop) {
+                alert("Please enter filament type and color, and loop.");
                 return;
             }
 
             // You can process the metadata here
             console.log("Filament Type: " + type);
             console.log("Filament Color: " + color);
+            console.log("Filament Loop: " + loop);
 
             // Here you might want to send the data to a server or process it further
             $.ajax({
@@ -34,7 +37,8 @@ $(function() {
                 contentType: "application/json",
                 data: JSON.stringify({
                     type: type,
-                    color: color
+                    color: color,
+                    loop: loop
                 }),
                 success: function(response) {
                     console.log("Metadata saved:", response.status);
@@ -50,9 +54,10 @@ $(function() {
         self.startSpectrometer = function () {
             const type = self.filamentType().trim();
             const color = self.filamentColor().trim();
+            const loop = parseInt(self.filamentLoop().trim());
 
-            if (!type || !color) {
-                alert("Please enter both filament type and color before starting the spectrometer.");
+            if (!type || !color || !loop) {
+                alert("Please enter filament type and color, and loop.");
                 return;
             }
 
@@ -62,7 +67,8 @@ $(function() {
                 contentType: "application/json",
                 data: JSON.stringify({
                     type: type,
-                    color: color
+                    color: color,
+                    loop: loop
                 }),
                 success: function (response) {
                     console.log(response.status);

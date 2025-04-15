@@ -302,7 +302,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         except Exception as e:
             self._logger.error(f"Error reading spectrometer data: {e}")
             
-    def perform_scan(self):
+    def perform_scan(self, loop, filament_color, filament_type):
         """Reads data from the spectrometer and sends it to the web interface."""
         try:
             spect.setGain(3)
@@ -319,26 +319,27 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             spect.shutterLED("AS72652", True)
             spect.shutterLED("AS72653", True)
             
-            # Reading spectrometer data
-            time.sleep(0.18)
-            light_spect_data = spect.readRAW() 
+            file_path = os.path.join(self._basefolder, "filament_data.txt")
+            all_scans = []
 
-            for i in range(len(light_spect_data)):
-                light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
-            
-            # Finally, pass the spectrometer data to the prediction function
-            self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
-            # predicted_material = predict_material(light_spect_data, 'R')
-            # self._logger.info(f"Predicted material: {predicted_material}")
+            for i in range(loop):
+                time.sleep(0.18)
+                light_spect_data = spect.readRAW()
 
-            # Send data to web UI
-            self._plugin_manager.send_plugin_message(
-                self._identifier, 
-                {"spectrometer_data": light_spect_data}
-            )
-            
-            time.sleep(1)  # Adjust sampling rate
-            return light_spect_data
+                for j in range(len(light_spect_data)):
+                    light_spect_data[j] = light_spect_data[j] - dark_spect_data[j]
+
+                self._logger.info(f"Raw Spectrometer Data (Scan {i+1}): {light_spect_data}")
+                all_scans.append(light_spect_data)
+
+                # Write each scan to the file
+                scan_str = ",".join(str(val) for val in light_spect_data)
+                line = f"{filament_color},{filament_type},{scan_str}\n"
+                with open(file_path, "a") as file:
+                    file.write(line)
+
+                time.sleep(1)
+            return all_scans
         except Exception as e:
             self._logger.error(f"Error reading spectrometer data: {e}")
             return        
@@ -367,19 +368,17 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
 
         filament_type = data.get("type", "Unknown")
         filament_color = data.get("color", "Unknown")
+        filament_loop = int(data.get("loop", 0))
         
-        scan_data = self.perform_scan()
+        if filament_loop <= 0:
+            return flask.jsonify(status="Invalid loop count"), 400
+        
+        scan_data = self.perform_scan(filament_loop, filament_color, filament_type)
+        
         if scan_data is None:
             return flask.jsonify(status="Spectrometer failed to start or read"), 500
-        scan_str = ",".join(str(val) for val in scan_data)
-
-        # Format final line
-        line = f"{filament_color},{filament_type},{scan_str}\n"
-        file_path = os.path.join(self._basefolder, "filament_data.txt")
-        with open(file_path, "a") as file:
-            file.write(line)
-
-        self._logger.info(f"Saved scan: {line.strip()}")
+        
+        self._logger.info(f"Saved {filament_loop} scans for {filament_color} {filament_type}")
         return flask.jsonify(status="Spectrometer started and data saved", scan=scan_data)
 
     @octoprint.plugin.BlueprintPlugin.route("/stop_spectrometer", methods=["POST"])

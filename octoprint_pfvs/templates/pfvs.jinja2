@@ -10,7 +10,13 @@
     <label for="filament_color_input">Filament Color:</label>
     <input type="text" id="filament_color_input"
         data-bind="value: filamentColor, valueUpdate: 'afterkeydown'"
-        placeholder="e.g., red, black, clear" />
+        placeholder="e.g., red, black, white" />
+
+    <label for="filament_loop">Filament Input:</label>
+    <input type="text" id="filament_loop"
+        data-bind="value: filamentLoop, valueUpdate: 'afterkeydown'"
+        placeholder="e.g., 100, 200" />    
+
 
     <button class="pfvs-btn" data-bind="click: saveFilamentMetadata">Set Metadata</button>
 
