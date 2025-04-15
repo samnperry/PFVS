@@ -18,7 +18,7 @@ $(function() {
         self.saveFilamentMetadata = function() {
             const type = self.filamentType().trim();
             const color = self.filamentColor().trim();
-            const loop = int(self.filamentLoop().trim());
+            const loop = parseInt(self.filamentLoop().trim());
 
             if (!type || !color || !loop) {
                 alert("Please enter filament type and color, and loop.");
