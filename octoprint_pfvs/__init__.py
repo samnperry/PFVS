@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import time
+import flask
 import octoprint.plugin
 from octoprint.events import Events
 import threading
@@ -288,18 +289,59 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 
                 # Finally, pass the spectrometer data to the prediction function
                 self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
-                predicted_material = predict_material(light_spect_data, 'R')
-                self._logger.info(f"Predicted material: {predicted_material}")
+                # predicted_material = predict_material(light_spect_data, 'R')
+                # self._logger.info(f"Predicted material: {predicted_material}")
 
                 # Send data to web UI
                 self._plugin_manager.send_plugin_message(
                     self._identifier, 
-                    {"spectrometer_data": light_spect_data, "predicted_material": predicted_material}
+                    {"spectrometer_data": light_spect_data}
                 )
                 
                 time.sleep(1)  # Adjust sampling rate
         except Exception as e:
             self._logger.error(f"Error reading spectrometer data: {e}")
+            
+    def perform_scan(self):
+        """Reads data from the spectrometer and sends it to the web interface."""
+        try:
+            spect.setGain(3)
+            spect.setIntegrationTime(63)
+            spect.shutterLED("AS72651", False)
+            spect.shutterLED("AS72652", False)
+            spect.shutterLED("AS72653", False)
+            time.sleep(0.18)
+            dark_spect_data = spect.readRAW()
+            self._logger.info(f"Raw Dark Spectrometer Data: {dark_spect_data}")
+            time.sleep(1.0)  
+
+            spect.shutterLED("AS72651", True)
+            spect.shutterLED("AS72652", True)
+            spect.shutterLED("AS72653", True)
+            
+            # Reading spectrometer data
+            time.sleep(0.18)
+            light_spect_data = spect.readRAW() 
+
+            for i in range(len(light_spect_data)):
+                light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
+            
+            # Finally, pass the spectrometer data to the prediction function
+            self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
+            # predicted_material = predict_material(light_spect_data, 'R')
+            # self._logger.info(f"Predicted material: {predicted_material}")
+
+            # Send data to web UI
+            self._plugin_manager.send_plugin_message(
+                self._identifier, 
+                {"spectrometer_data": light_spect_data}
+            )
+            
+            time.sleep(1)  # Adjust sampling rate
+            return light_spect_data
+        except Exception as e:
+            self._logger.error(f"Error reading spectrometer data: {e}")
+            return        
 
     ##~~ Software update hook
 
@@ -321,8 +363,24 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
     @octoprint.plugin.BlueprintPlugin.route("/start_spectrometer", methods=["POST"])
     def api_start_spectrometer(self):
         """API endpoint to start spectrometer via UI."""
-        self.start_spectrometer()
-        return jsonify(status="Spectrometer started")
+        data = flask.request.get_json()
+
+        filament_type = data.get("type", "Unknown")
+        filament_color = data.get("color", "Unknown")
+        
+        scan_data = self.perform_scan()
+        if scan_data is None:
+            return flask.jsonify(status="Spectrometer failed to start or read"), 500
+        scan_str = ",".join(str(val) for val in scan_data)
+
+        # Format final line
+        line = f"{filament_color},{filament_type},{scan_str}\n"
+        file_path = os.path.join(self._basefolder, "filament_data.txt")
+        with open(file_path, "a") as file:
+            file.write(line)
+
+        self._logger.info(f"Saved scan: {line.strip()}")
+        return flask.jsonify(status="Spectrometer started and data saved", scan=scan_data)
 
     @octoprint.plugin.BlueprintPlugin.route("/stop_spectrometer", methods=["POST"])
     def api_stop_spectrometer(self):

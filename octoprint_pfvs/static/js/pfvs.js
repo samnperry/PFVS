@@ -11,13 +11,28 @@ $(function() {
         self.spectrometerData = ko.observableArray([]);
         self.isSpectrometerRunning = ko.observable(false);
         self.predictedMaterial = ko.observable("");
+        self.filamentType = ko.observable("");
+        self.filamentColor = ko.observable("");
 
         self.startSpectrometer = function () {
+            const type = self.filamentType().trim();
+            const color = self.filamentColor().trim();
+
+            if (!type || !color) {
+                alert("Please enter both filament type and color before starting the spectrometer.");
+                return;
+            }
+
             $.ajax({
                 url: "/plugin/pfvs/start_spectrometer",
                 type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    type: type,
+                    color: color
+                }),
                 success: function (response) {
-                    console.log(response.status)
+                    console.log(response.status);
                     self.isSpectrometerRunning(true);
                 },
                 error: function () {

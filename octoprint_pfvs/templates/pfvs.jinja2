@@ -1,5 +1,20 @@
 <div id="pfvs_plugin">
     <h2>Plastic Filament Verification System</h2>
+
+    <h3>Filament Metadata</h3>
+    <label for="filament_type_input">Filament Type:</label>
+    <input type="text" id="filament_type_input"
+        data-bind="value: filamentType, valueUpdate: 'afterkeydown'"
+        placeholder="e.g., PLA, PETG, ASA" />
+
+    <label for="filament_color_input">Filament Color:</label>
+    <input type="text" id="filament_color_input"
+        data-bind="value: filamentColor, valueUpdate: 'afterkeydown'"
+        placeholder="e.g., red, black, clear" />
+
+    <button class="pfvs-btn" data-bind="click: saveFilamentMetadata">Set Metadata</button>
+
+
     <button class="pfvs-btn pfvs-start" data-bind="click: startSpectrometer, disable: isSpectrometerRunning">
         Start Spectrometer
     </button>
