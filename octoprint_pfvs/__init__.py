@@ -215,9 +215,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                                 self._logger.info(f"Sent updated G-code commands: {gcode_commands}")
                                 self.last_temp_change_time = 1
                                 self.lcd.clear()
-                                self.lcd.write_string("Updated settings")
-                    else:
-                        self._logger.warning(f"Unknown filament type: {self.predicted_material}. No preset settings found.") 
+                                self.lcd.write_string("Updated settings") 
             else:
                 return line                  
 
