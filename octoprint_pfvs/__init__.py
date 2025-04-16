@@ -362,7 +362,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
                 predicted_material = predict_material(light_spect_data, 'R')
                 self._logger.info(f"Predicted material: {predicted_material}")
-                self.lcd.clear()
                 self.lcd.write_string(self.predicted_material)
 
                 # Send data to web UI
