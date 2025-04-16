@@ -277,7 +277,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 # {"rgb": rgb, "predicted_color": color_code}
             # )       
                 
-            self.predicted_material = predict_material(light_spect_data, 'W')
+            self.predicted_material = predict_material(light_spect_data, 'R')
             time.sleep(1)  # Adjust sampling rate
         except Exception as e:
             self._logger.error(f"Error reading spectrometer data: {e}")
@@ -354,20 +354,22 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 for i in range(len(light_spect_data)):
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
                 
-                r, g, b, c = self.color_sensor.color_raw  # (R, G, B)
-                rgb = (r, g, b)
-                color_code = self.classify_color(rgb, c)    
+                # r, g, b, c = self.color_sensor.color_raw  # (R, G, B)
+                # rgb = (r, g, b)
+                # color_code = self.classify_color(rgb, c)    
                 
                 # Finally, pass the spectrometer data to the prediction function
                 self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
-                self._logger.info(f"Color: {color_code}")
-                # predicted_material = predict_material(light_spect_data, color_code)
-                # self._logger.info(f"Predicted material: {predicted_material}")
+                # self._logger.info(f"Color: {color_code}")
+                predicted_material = predict_material(light_spect_data, 'R')
+                self._logger.info(f"Predicted material: {predicted_material}")
+                self.lcd.clear()
+                self.lcd.write_string(self.predicted_material)
 
                 # Send data to web UI
                 self._plugin_manager.send_plugin_message(
                     self._identifier, 
-                    {"spectrometer_data": light_spect_data, "rgb": rgb, "predicted_color": color_code}
+                    {"spectrometer_data": light_spect_data}
                 )
                 
                 time.sleep(1)  # Adjust sampling rate
