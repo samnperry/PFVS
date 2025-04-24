@@ -332,12 +332,11 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 self._logger.info(f"Raw Spectrometer Data (Scan {i+1}): {light_spect_data}")
                 if (i != 0):
                     all_scans.append(light_spect_data)
-
-                # Write each scan to the file
-                scan_str = ",".join(str(val) for val in light_spect_data)
-                line = f"{filament_color},{filament_type},{scan_str}\n"
-                with open(file_path, "a") as file:
-                    file.write(line)
+                    # Write each scan to the file
+                    scan_str = ",".join(str(val) for val in light_spect_data)
+                    line = f"{filament_color},{filament_type},{scan_str}\n"
+                    with open(file_path, "a") as file:
+                        file.write(line)
 
                 time.sleep(1)
             return all_scans
