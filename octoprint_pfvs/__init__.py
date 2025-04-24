@@ -319,7 +319,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             spect.shutterLED("AS72652", True)
             spect.shutterLED("AS72653", True)
             
-            file_path = os.path.join(self._basefolder, "filament_data.txt")
+            file_path = os.path.join(self._basefolder, "filament_data_4-24.txt")
             all_scans = []
 
             for i in range(loop):
@@ -330,7 +330,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                     light_spect_data[j] = light_spect_data[j] - dark_spect_data[j]
 
                 self._logger.info(f"Raw Spectrometer Data (Scan {i+1}): {light_spect_data}")
-                all_scans.append(light_spect_data)
+                if (i != 0):
+                    all_scans.append(light_spect_data)
 
                 # Write each scan to the file
                 scan_str = ",".join(str(val) for val in light_spect_data)
