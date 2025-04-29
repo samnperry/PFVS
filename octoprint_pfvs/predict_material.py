@@ -55,7 +55,9 @@ def predict_material(spectral_array, color_label):
     elif (clr == 'K'):
         prefix = "Black"
     elif (clr == 'W'):
-        prefix = "Whiete"    
+        prefix = "White"
+    
+    prefix = model_dir + "/" + prefix    
 
     # Load pipeline components
     scaler           = joblib.load(f'{prefix}_scaler.pkl')
