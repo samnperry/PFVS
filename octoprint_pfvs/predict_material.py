@@ -3,79 +3,67 @@ import numpy as np
 import joblib
 import logging
 
-def predict_material(spectral_data, color_label):
+# Standalone material-prediction function using saved pipeline in ./models_per_color
+def predict_material(spectral_array, color_label):
     """
-    Predict filament material for one 18-dim spectral sample and a color code.
-    This version is fully self-contained and does not rely on external functions.
+    Predicts filament material from a spectral scan and color label.
+
+    Assumes the current working directory contains a 'models_per_color' folder with:
+      - material_encoder.pkl
+      - <Color>_scaler.pkl
+      - <Color>_feature_weights.pkl
+      - <Color>_scaler_weighted.pkl
+      - <Color>_pca_weighted.pkl
+      - <Color>_svm_model.pkl
+
+    Args:
+        spectral_array (array-like): 1D array of raw spectral values.
+        color_label (str): filament color (e.g. 'black', 'white').
+
+    Returns:
+        str: material prediction (e.g., 'PLA', 'PET', 'ASA').
     """
     
     logger = logging.getLogger("octoprint.plugins.pfvs")
     logger.setLevel(logging.DEBUG)
     logger.debug("Starting material prediction process.")
-
-    COLOR_MAP = {
-        'B': 'Blue',
-        'G': 'Green',
-        'R': 'Red',
-        'K': 'Black',
-        'W': 'White'
-    }
-
-    # Normalize color label
-    cl = color_label.strip()
-    if len(cl) == 1:
-        code = cl.upper()
-        if code not in COLOR_MAP:
-            raise ValueError(f"Unknown color code: {color_label!r}")
-        full = COLOR_MAP[code]
-    else:
-        full = cl.capitalize()
-        if full not in COLOR_MAP.values():
-            raise ValueError(f"Unknown color name: {color_label!r}")
-
-    # Validate spectral data shape
-    X = np.array(spectral_data, dtype=float).reshape(1, -1)
-    logger.debug(f"Raw input shape: {X.shape}")
-    if X.shape[1] != 18:
-        raise ValueError("Need exactly 18 spectral channel values.")
-
-    # Load model components
-    model_dir = os.path.join(os.path.dirname(__file__), 'models_per_color')
-    comp = {}
-    to_load = [
-        ('scaler',    f'{full}_scaler.pkl'),
-        ('weights',   f'{full}_feature_weights.pkl'),
-        ('scaler_w',  f'{full}_scaler_weighted.pkl'),
-        ('pca',       f'{full}_pca_weighted.pkl'),
-        ('svm',       f'{full}_svm_model.pkl'),
-        ('encoder',   'material_encoder.pkl')
-    ]
-    for key, fname in to_load:
-        path = os.path.join(model_dir, fname)
-        logger.debug(f"Loading {key} from {path}")
-        comp[key] = joblib.load(path)
-        logger.debug(f"  → {key} loaded (type={type(comp[key]).__name__})")
-
-    # Run prediction pipeline
-    Xs = comp['scaler'].transform(X)
-    logger.debug(f"After scaler.transform: {Xs.shape}, sample[0]={Xs[0,:3]}…")
-
-    Xw = Xs * comp['weights']
-    logger.debug(f"After weighting: {Xw.shape}, weighted[0]={Xw[0,:3]}…")
-
-    Xsw = comp['scaler_w'].transform(Xw)
-    logger.debug(f"After scaler_weighted.transform: {Xsw.shape}, sample[0]={Xsw[0,:3]}…")
-
-    Xp = comp['pca'].transform(Xsw)
-    logger.debug(f"After PCA.transform: {Xp.shape}, components={comp['pca'].n_components_}")
-
-    y_enc = comp['svm'].predict(Xp)
-    logger.debug(f"SVM.predict returned encoded label: {y_enc}")
-
-    material = comp['encoder'].inverse_transform(y_enc.astype(int))[0]
-    logger.info(f"Color={color_label}, Predicted material={material}")
     
-    return material
+    # Ensure numpy array and correct shape
+    X = np.array(spectral_array, dtype=float)
+    if X.ndim == 1:
+        X = X.reshape(1, -1)
+
+    # Base model directory
+    model_dir = './models_per_color'
+
+    # Load global material encoder
+    encoder_path = os.path.join(model_dir, 'material_encoder.pkl')
+    material_encoder = joblib.load(encoder_path)
+    logger.error("Material encoded")
+
+    # Normalize color label and build file prefix
+    clr = color_label.strip().capitalize()
+    prefix = os.path.join(model_dir, clr)
+
+    # Load pipeline components
+    scaler           = joblib.load(f'{prefix}_scaler.pkl')
+    feature_weights  = joblib.load(f'{prefix}_feature_weights.pkl')
+    scaler_weighted  = joblib.load(f'{prefix}_scaler_weighted.pkl')
+    pca              = joblib.load(f'{prefix}_pca_weighted.pkl')
+    svm_model        = joblib.load(f'{prefix}_svm_model.pkl')
+    logger.error("All models loaded in")
+
+    # Pipeline: scale, weight, scale, PCA, SVM
+    X_scaled     = scaler.transform(X)
+    X_weighted   = X_scaled * feature_weights
+    X_wt_scaled  = scaler_weighted.transform(X_weighted)
+    X_pca        = pca.transform(X_wt_scaled)
+    y_pred       = svm_model.predict(X_pca)
+
+    # Return decoded label
+    logger.error(material_encoder.inverse_transform(y_pred)[0])
+    return material_encoder.inverse_transform(y_pred)[0]
+
 
 # def predict_material(spectral_data, color_label):
 #     """

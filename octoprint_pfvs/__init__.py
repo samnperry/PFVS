@@ -354,20 +354,20 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 for i in range(len(light_spect_data)):
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
                 
-                # r, g, b, c = self.color_sensor.color_raw  # (R, G, B)
-                # rgb = (r, g, b)
-                # color_code = self.classify_color(rgb, c)    
+                r, g, b, c = self.color_sensor.color_raw
+                rgb = (r, g, b)
+                color_code = self.classify_color(rgb, c)    
                 
                 # Finally, pass the spectrometer data to the prediction function
                 self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
-                predicted_material = predict_material(light_spect_data, 'R')
+                predicted_material = predict_material(light_spect_data, color_code)
                 self._logger.info(f"Predicted material: {predicted_material}")
                 self.lcd.write_string(self.predicted_material)
 
                 # Send data to web UI
                 self._plugin_manager.send_plugin_message(
                     self._identifier, 
-                    {"spectrometer_data": light_spect_data}
+                    {"spectrometer_data": light_spect_data, "predicted_color": color_code}
                 )
                 
                 time.sleep(1)  # Adjust sampling rate
