@@ -43,14 +43,13 @@ def predict_material(spectral_array, color_label):
 
     # Normalize color label and build file prefix
     clr = color_label.strip().capitalize()
-    prefix = os.path.join(model_dir, clr)
 
     # Load pipeline components
-    scaler           = joblib.load(f'{prefix}_scaler.pkl')
-    feature_weights  = joblib.load(f'{prefix}_feature_weights.pkl')
-    scaler_weighted  = joblib.load(f'{prefix}_scaler_weighted.pkl')
-    pca              = joblib.load(f'{prefix}_pca_weighted.pkl')
-    svm_model        = joblib.load(f'{prefix}_svm_model.pkl')
+    scaler           = joblib.load(f'{clr}_scaler.pkl')
+    feature_weights  = joblib.load(f'{clr}_feature_weights.pkl')
+    scaler_weighted  = joblib.load(f'{clr}_scaler_weighted.pkl')
+    pca              = joblib.load(f'{clr}_pca_weighted.pkl')
+    svm_model        = joblib.load(f'{clr}_svm_model.pkl')
     logger.error("All models loaded in")
 
     # Pipeline: scale, weight, scale, PCA, SVM
