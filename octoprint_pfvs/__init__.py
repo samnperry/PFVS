@@ -288,6 +288,9 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         r_norm = r / total
         g_norm = g / total
         b_norm = b / total
+        
+        self._logger.debug(f"r: {r}, g: {g}, b: {b}")
+        self._logger.debug(f"r_norm: {r_norm}, g_norm: {g_norm}, b_norm: {b_norm}")
 
         if c < 30:
             return 'K'  # Very low light, likely black
