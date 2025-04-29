@@ -34,10 +34,11 @@ def predict_material(spectral_array, color_label):
         X = X.reshape(1, -1)
 
     # Base model directory
-    model_dir = os.path.dirname(os.path.abspath(__file__))
+    model_dir = os.path.dirname(os.path.abspath(__file__)) + "/models_per_color"
 
     # Load global material encoder
     encoder_path = os.path.join(model_dir, 'material_encoder.pkl')
+    logger.debug(f'{encoder_path}')
     material_encoder = joblib.load(encoder_path)
     logger.error("Material encoded")
 
