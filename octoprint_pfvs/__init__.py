@@ -292,21 +292,17 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         self._logger.info(f"r: {r}, g: {g}, b: {b}")
         self._logger.info(f"r_norm: {r_norm}, g_norm: {g_norm}, b_norm: {b_norm}")
 
-        if c < 30:
+        if c < 1000:
             return 'K'  # Very low light, likely black
 
-        if r_norm > 0.5 and g_norm < 0.3 and b_norm < 0.3:
+        if r_norm > g_norm and r_norm > b_norm:
             return 'R'
-        elif g_norm > 0.5 and r_norm < 0.3 and b_norm < 0.3:
+        elif g_norm > r_norm and g_norm > b_norm:
             return 'G'
-        elif b_norm > 0.5 and r_norm < 0.3 and g_norm < 0.3:
+        elif b_norm > r_norm and b_norm > g_norm:
             return 'B'
-        elif r > 200 and g > 200 and b > 200 and c > 400:
-            return 'W'
-        elif r < 50 and g < 50 and b < 50:
-            return 'K'
         else:
-            return 'U'
+            return 'W'
 
 
             
