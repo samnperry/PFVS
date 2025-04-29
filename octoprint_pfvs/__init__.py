@@ -289,8 +289,8 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
         g_norm = g / total
         b_norm = b / total
         
-        self._logger.debug(f"r: {r}, g: {g}, b: {b}")
-        self._logger.debug(f"r_norm: {r_norm}, g_norm: {g_norm}, b_norm: {b_norm}")
+        self._logger.info(f"r: {r}, g: {g}, b: {b}")
+        self._logger.info(f"r_norm: {r_norm}, g_norm: {g_norm}, b_norm: {b_norm}")
 
         if c < 30:
             return 'K'  # Very low light, likely black
@@ -358,6 +358,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
                 
                 r, g, b, c = self.color_sensor.color_raw
+                self._logger.info(f"r: {r}, g: {g}, b: {b}, c: {c}")
                 rgb = (r, g, b)
                 color_code = self.classify_color(rgb, c)    
                 
