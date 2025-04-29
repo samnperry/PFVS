@@ -34,7 +34,7 @@ def predict_material(spectral_array, color_label):
         X = X.reshape(1, -1)
 
     # Base model directory
-    model_dir = './models_per_color'
+    model_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Load global material encoder
     encoder_path = os.path.join(model_dir, 'material_encoder.pkl')
