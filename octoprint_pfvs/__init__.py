@@ -360,6 +360,7 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                 
                 # Finally, pass the spectrometer data to the prediction function
                 self._logger.info(f"Raw Spectrometer Data: {light_spect_data}")
+                self._logger.info(f"Color: {color_code}")
                 predicted_material = predict_material(light_spect_data, color_code)
                 self._logger.info(f"Predicted material: {predicted_material}")
                 self.lcd.write_string(self.predicted_material)
