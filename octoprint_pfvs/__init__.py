@@ -138,7 +138,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
             self.is_filament_loading = True
             self.is_filament_unloading = False
             self._logger.info("Filament is being loaded.") # Check if filament is present
-            self.lcd.write_string(self.predicted_material)
             # Run spectrometer scan
             self.filament_scan()
             self.filament_scan()
