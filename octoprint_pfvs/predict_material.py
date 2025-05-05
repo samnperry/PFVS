@@ -38,7 +38,6 @@ def predict_material(spectral_array, color_label):
 
     # Load global material encoder
     encoder_path = os.path.join(model_dir, 'material_encoder.pkl')
-    logger.debug(f'{encoder_path}')
     material_encoder = joblib.load(encoder_path)
     logger.error("Material encoded")
 
@@ -75,7 +74,6 @@ def predict_material(spectral_array, color_label):
     y_pred       = svm_model.predict(X_pca)
 
     # Return decoded label
-    logger.error(material_encoder.inverse_transform(y_pred)[0])
     return material_encoder.inverse_transform(y_pred)[0]
 
 

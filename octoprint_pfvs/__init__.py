@@ -268,7 +268,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
                     
             r, g, b, c = self.color_sensor.color_raw
-            self._logger.info(f"r: {r}, g: {g}, b: {b}, c: {c}")
             rgb = (r, g, b)
             color_code = self.classify_color(rgb, c)       
             
@@ -347,7 +346,6 @@ class PFVSPlugin(octoprint.plugin.SettingsPlugin,
                     light_spect_data[i] = light_spect_data[i] - dark_spect_data[i]
                 
                 r, g, b, c = self.color_sensor.color_raw
-                self._logger.info(f"r: {r}, g: {g}, b: {b}, c: {c}")
                 rgb = (r, g, b)
                 color_code = self.classify_color(rgb, c)    
                 
